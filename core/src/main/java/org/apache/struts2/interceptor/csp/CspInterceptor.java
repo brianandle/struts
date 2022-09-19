@@ -21,9 +21,13 @@ package org.apache.struts2.interceptor.csp;
 import com.opensymphony.xwork2.ActionInvocation;
 import com.opensymphony.xwork2.interceptor.AbstractInterceptor;
 import com.opensymphony.xwork2.interceptor.PreResultListener;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 import java.net.URI;
 import java.util.Optional;
-import javax.servlet.http.HttpServletResponse;
 
 /**
  * Interceptor that implements Content Security Policy on incoming requests used to protect against
@@ -36,17 +40,30 @@ import javax.servlet.http.HttpServletResponse;
  * @see DefaultCspSettings
  **/
 public final class CspInterceptor extends AbstractInterceptor implements PreResultListener {
+
+    private static final Logger LOG = LogManager.getLogger(CspInterceptor.class);
+
     private final CspSettings settings = new DefaultCspSettings();
+
+    private boolean disabled = false;
 
     @Override
     public String intercept(ActionInvocation invocation) throws Exception {
-        invocation.addPreResultListener(this);
+        if (disabled) {
+            LOG.trace("CSP interceptor has been disabled");
+        } else {
+            invocation.addPreResultListener(this);
+        }
         return invocation.invoke();
     }
 
     public void beforeResult(ActionInvocation invocation, String resultCode) {
+        if (disabled) {
+            return;
+        }
+        HttpServletRequest request = invocation.getInvocationContext().getServletRequest();
         HttpServletResponse response = invocation.getInvocationContext().getServletResponse();
-        settings.addCspHeaders(response);
+        settings.addCspHeaders(request, response);
     }
 
     public void setReportUri(String reportUri) {
@@ -71,8 +88,12 @@ public final class CspInterceptor extends AbstractInterceptor implements PreResu
         return Optional.empty();
     }
 
-    public void setEnforcingMode(String value){
+    public void setEnforcingMode(String value) {
         boolean enforcingMode = Boolean.parseBoolean(value);
         settings.setEnforcingMode(enforcingMode);
+    }
+
+    public void setDisabled(String value) {
+        this.disabled = Boolean.parseBoolean(value);
     }
 }

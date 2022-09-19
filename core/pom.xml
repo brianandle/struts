@@ -24,14 +24,14 @@
     <parent>
         <groupId>org.apache.struts</groupId>
         <artifactId>struts2-parent</artifactId>
-        <version>6.0.0-SNAPSHOT</version>
+        <version>6.1.0-SNAPSHOT</version>
     </parent>
     <artifactId>struts2-core</artifactId>
     <packaging>jar</packaging>
     <name>Struts 2 Core</name>
 
     <properties>
-        <tlib.version>2.6</tlib.version>
+        <tlib.version>6.0</tlib.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 
@@ -339,8 +339,7 @@
         <dependency>
             <groupId>org.testng</groupId>
             <artifactId>testng</artifactId>
-            <scope>compile</scope>
-            <optional>true</optional>
+            <scope>test</scope>
         </dependency>
 
         <!-- SLF4J support -->

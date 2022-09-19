@@ -29,7 +29,7 @@
 
     <modelVersion>4.0.0</modelVersion>
     <artifactId>struts2-parent</artifactId>
-    <version>6.0.0-SNAPSHOT</version>
+    <version>6.1.0-SNAPSHOT</version>
     <packaging>pom</packaging>
     <name>Struts 2</name>
     <url>http://struts.apache.org/</url>
@@ -104,7 +104,7 @@
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <project.build.outputTimestamp>2022-05-24T11:59:32Z</project.build.outputTimestamp>
+        <project.build.outputTimestamp>2022-09-02T12:41:56Z</project.build.outputTimestamp>
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
 
@@ -112,13 +112,14 @@
         <asm.version>9.2</asm.version>
         <jackson.version>2.13.2</jackson.version>
         <jackson-databind.version>2.13.2.1</jackson-databind.version>
-        <log4j2.version>2.17.2</log4j2.version>
-        <ognl.version>3.3.2</ognl.version>
+        <log4j2.version>2.18.0</log4j2.version>
+        <ognl.version>3.3.3</ognl.version>
         <slf4j.version>1.7.32</slf4j.version>
-        <spring.platformVersion>5.3.20</spring.platformVersion>
+        <spring.platformVersion>5.3.22</spring.platformVersion>
         <tiles.version>3.0.8</tiles.version>
         <tiles-request.version>1.0.7</tiles-request.version>
-        <maven-surefire-plugin.version>3.0.0-M4</maven-surefire-plugin.version>
+        <maven-surefire-plugin.version>3.0.0-M7</maven-surefire-plugin.version>
+        <hibernate-validator.version>6.2.4.Final</hibernate-validator.version>
 
         <!-- Site generation -->
         <fluido-skin.version>1.9</fluido-skin.version>
@@ -391,7 +392,7 @@
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-enforcer-plugin</artifactId>
-                    <version>3.0.0-M3</version>
+                    <version>3.1.0</version>
                     <executions>
                         <execution>
                             <id>enforce</id>
@@ -817,7 +818,7 @@
             <dependency>
                 <groupId>org.glassfish</groupId>
                 <artifactId>javax.el</artifactId>
-                <version>3.0.1-b11</version>
+                <version>3.0.1-b12</version>
             </dependency>
 
             <dependency>
@@ -1111,9 +1112,7 @@
             <dependency>
                 <groupId>org.testng</groupId>
                 <artifactId>testng</artifactId>
-                <version>7.1.0</version>
-                <scope>compile</scope>
-                <optional>true</optional>
+                <version>7.4.0</version>
             </dependency>
 
             <dependency>

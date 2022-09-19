@@ -31,8 +31,8 @@
     and {@link com.opensymphony.xwork2.inject.Inject}
 -->
 <!DOCTYPE struts PUBLIC
-    "-//Apache Software Foundation//DTD Struts Configuration 2.6//EN"
-    "http://struts.apache.org/dtds/struts-2.6.dtd">
+    "-//Apache Software Foundation//DTD Struts Configuration 6.0//EN"
+        "struts-6.0.dtd">
 
 <struts>
 
@@ -231,8 +231,8 @@
     <bean type="org.apache.struts2.components.date.DateFormatter" name="simpleDateFormatter" class="org.apache.struts2.components.date.SimpleDateFormatAdapter" scope="singleton"/>
     <bean type="org.apache.struts2.components.date.DateFormatter" name="dateTimeFormatter" class="org.apache.struts2.components.date.DateTimeFormatterAdapter" scope="singleton"/>
 
-    <bean type="com.opensymphony.xwork2.ognl.OgnlCacheFactory" name="ognlExpressionCacheFactory" class="com.opensymphony.xwork2.ognl.DefaultOgnlExpressionCacheFactory" scope="singleton"/>
-    <bean type="com.opensymphony.xwork2.ognl.OgnlCacheFactory" name="ognlBeanInfoCacheFactory" class="com.opensymphony.xwork2.ognl.DefaultOgnlBeanInfoCacheFactory" scope="singleton"/>
+    <bean type="com.opensymphony.xwork2.ognl.ExpressionCacheFactory" name="struts" class="com.opensymphony.xwork2.ognl.DefaultOgnlExpressionCacheFactory" scope="singleton" />
+    <bean type="com.opensymphony.xwork2.ognl.BeanInfoCacheFactory" name="struts" class="com.opensymphony.xwork2.ognl.DefaultOgnlBeanInfoCacheFactory" scope="singleton" />
 
     <package name="struts-default" abstract="true">
         <result-types>
@@ -392,6 +392,7 @@
                 <interceptor-ref name="servletConfig"/>
                 <interceptor-ref name="i18n"/>
                 <interceptor-ref name="cspInterceptor">
+                    <param name="disabled">false</param>
                     <param name="enforcingMode">false</param>
                 </interceptor-ref>
                 <interceptor-ref name="prepare"/>
@@ -407,15 +408,18 @@
                 <interceptor-ref name="params"/>
                 <interceptor-ref name="conversionError"/>
                 <interceptor-ref name="coepInterceptor">
-                    <param name="enforcingMode">false</param>
                     <param name="disabled">false</param>
+                    <param name="enforcingMode">false</param>
                     <param name="exemptedPaths"/>
                 </interceptor-ref>
                 <interceptor-ref name="coopInterceptor">
+                    <param name="disabled">false</param>
                     <param name="exemptedPaths"/>
                     <param name="mode">same-origin</param>
                 </interceptor-ref>
-                <interceptor-ref name="fetchMetadata"/>
+                <interceptor-ref name="fetchMetadata">
+                    <param name="disabled">false</param>
+                </interceptor-ref>
                 <interceptor-ref name="validation">
                     <param name="excludeMethods">input,back,cancel,browse</param>
                 </interceptor-ref>
