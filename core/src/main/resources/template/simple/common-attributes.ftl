@@ -18,6 +18,6 @@
  * under the License.
  */
 -->
-<#if parameters.accesskey?has_content>
- accesskey="${parameters.accesskey}"
-</#if>
+<#if attributes.accesskey?has_content>
+ accesskey="${attributes.accesskey}"<#rt/>
+</#if><#rt/>

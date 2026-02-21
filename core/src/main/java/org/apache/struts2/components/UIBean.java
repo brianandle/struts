@@ -18,12 +18,14 @@
  */
 package org.apache.struts2.components;
 
-import com.opensymphony.xwork2.config.ConfigurationException;
-import com.opensymphony.xwork2.inject.Inject;
-import com.opensymphony.xwork2.util.TextParseUtil;
-import com.opensymphony.xwork2.util.ValueStack;
+import org.apache.struts2.config.ConfigurationException;
+import org.apache.struts2.inject.Inject;
+import org.apache.struts2.util.TextParseUtil;
+import org.apache.struts2.util.ValueStack;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 import org.apache.commons.lang3.ObjectUtils;
-import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.struts2.StrutsConstants;
@@ -32,19 +34,24 @@ import org.apache.struts2.components.template.Template;
 import org.apache.struts2.components.template.TemplateEngine;
 import org.apache.struts2.components.template.TemplateEngineManager;
 import org.apache.struts2.components.template.TemplateRenderingContext;
+import org.apache.struts2.dispatcher.AttributeMap;
 import org.apache.struts2.dispatcher.StaticContentLoader;
+import org.apache.struts2.interceptor.csp.CspNonceReader;
 import org.apache.struts2.util.ComponentUtils;
 import org.apache.struts2.util.TextProviderHelper;
 import org.apache.struts2.views.annotations.StrutsTagAttribute;
 import org.apache.struts2.views.util.ContextUtil;
 
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
 import java.io.Writer;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
+
+import static java.util.Collections.emptyMap;
+import static org.apache.commons.lang3.StringUtils.isBlank;
+import static org.apache.struts2.dispatcher.DispatcherConstants.ATTRIBUTES;
 
 /**
  * <p>
@@ -298,7 +305,7 @@ import java.util.Map;
  * <!-- END SNIPPET: javascriptRelatedAttributes -->
  *
  * <!-- START SNIPPET: tooltipattributes -->
- *
+ * <strong>Deprecated since 7.0.1</strong
  * <table border="1" summary="">
  *  <tr>
  *     <td>Attribute</td>
@@ -342,7 +349,7 @@ import java.util.Map;
  *
  * <!-- START SNIPPET: tooltipdescription -->
  * <p>
- * <b>tooltipConfig is deprecated, use individual tooltip configuration attributes instead </b>
+ * <strong>tooltipConfig is deprecated, use individual tooltip configuration attributes instead </strong>
  * </p>
  *
  * <p>
@@ -378,7 +385,7 @@ import java.util.Map;
  *
  * <pre>
  * <!-- START SNIPPET: tooltipexample -->
- *
+ * <strong>Deprecated since 7.0.1</strong>
  * &lt;!-- Example 1: --&gt;
  * &lt;s:form
  *          tooltipDelay="500"
@@ -435,7 +442,15 @@ import java.util.Map;
  *
  */
 public abstract class UIBean extends Component {
+
     private static final Logger LOG = LogManager.getLogger(UIBean.class);
+
+    static final String TEMPLATE_DIR = "templateDir";
+    static final String THEME = "theme";
+
+    protected static final String ATTR_FIELD_VALUE = "fieldValue";
+    protected static final String ATTR_NAME_VALUE = "nameValue";
+    protected static final String ATTR_VALUE = "value";
 
     protected HttpServletRequest request;
     protected HttpServletResponse response;
@@ -514,6 +529,8 @@ public abstract class UIBean extends Component {
 
     protected TemplateEngineManager templateEngineManager;
 
+    protected CspNonceReader cspNonceReader;
+
     @Inject(StrutsConstants.STRUTS_UI_TEMPLATEDIR)
     public void setDefaultTemplateDir(String dir) {
         this.defaultTemplateDir = dir;
@@ -537,6 +554,11 @@ public abstract class UIBean extends Component {
     @Inject
     public void setTemplateEngineManager(TemplateEngineManager mgr) {
         this.templateEngineManager = mgr;
+    }
+
+    @Inject
+    public void setCspNonceReader(CspNonceReader cspNonceReader) {
+        this.cspNonceReader = cspNonceReader;
     }
 
     @Override
@@ -584,7 +606,7 @@ public abstract class UIBean extends Component {
 
         LOG.debug("Rendering template {}", template);
 
-        final TemplateRenderingContext context = new TemplateRenderingContext(template, writer, getStack(), getParameters(), this);
+        final TemplateRenderingContext context = new TemplateRenderingContext(template, writer, getStack(), getAttributes(), this);
         engine.renderTemplate(context);
     }
 
@@ -595,19 +617,18 @@ public abstract class UIBean extends Component {
             result = findString(this.templateDir);
         }
 
-        // If templateDir is not explicitly given,
-        // try to find attribute which states the dir set to use
-        if (StringUtils.isBlank(result)) {
-            result = stack.findString("#attr.templateDir");
+        // Check Request, Session, Application scopes
+        if (isBlank(result)) {
+            result = (String) getAttrMap().get(TEMPLATE_DIR);
         }
 
         // Default template set
-        if (StringUtils.isBlank(result)) {
+        if (isBlank(result)) {
             result = defaultTemplateDir;
         }
 
         // Defaults to 'template'
-        if (StringUtils.isBlank(result)) {
+        if (isBlank(result)) {
             result = "template";
         }
 
@@ -621,32 +642,36 @@ public abstract class UIBean extends Component {
             result = findString(this.theme);
         }
 
-        if (StringUtils.isBlank(result)) {
+        if (isBlank(result)) {
             Form form = (Form) findAncestor(Form.class);
             if (form != null) {
                 result = form.getTheme();
             }
         }
 
-        // If theme set is not explicitly given,
-        // try to find attribute which states the theme set to use
-        if (StringUtils.isBlank(result)) {
-            result = stack.findString("#attr.theme");
+        // Check Request, Session, Application scopes
+        if (isBlank(result)) {
+            result = (String) getAttrMap().get(THEME);
         }
 
         // Default theme set
-        if (StringUtils.isBlank(result)) {
+        if (isBlank(result)) {
             result = defaultUITheme;
         }
 
         return result;
     }
 
+    private Map<String, Object> getAttrMap() {
+        AttributeMap attrMap = (AttributeMap) getStack().getContext().get(ATTRIBUTES);
+        return attrMap != null ? attrMap : emptyMap();
+    }
+
     public void evaluateParams() {
         String gotTheme = getTheme();
 
-        addParameter("templateDir", getTemplateDir());
-        addParameter("theme", gotTheme);
+        addParameter(TEMPLATE_DIR, getTemplateDir());
+        addParameter(THEME, gotTheme);
         addParameter("template", template != null ? findString(template) : getDefaultTemplate());
         addParameter("dynamicAttributes", dynamicAttributes);
         addParameter("themeExpansionToken", uiThemeExpansionToken);
@@ -660,7 +685,7 @@ public abstract class UIBean extends Component {
         if (this.key != null) {
 
             if(this.name == null) {
-                this.name = key;
+                setName(key);
             }
 
             if(this.label == null) {
@@ -689,7 +714,6 @@ public abstract class UIBean extends Component {
 
         if (labelPosition != null) {
             String labelPosition = findString(this.labelPosition);
-            addParameter("labelposition", labelPosition);
             addParameter("labelPosition", labelPosition);
         }
 
@@ -795,37 +819,7 @@ public abstract class UIBean extends Component {
             addParameter("title", findString(title));
         }
 
-
-        // see if the value was specified as a parameter already
-        final String NAME_VALUE = "nameValue";
-        if (parameters.containsKey("value")) {
-            parameters.put(NAME_VALUE, parameters.get("value"));
-        } else {
-            if (evaluateNameValue()) {
-                final Class<?> valueClazz = getValueClassType();
-
-                if (valueClazz != null) {
-                    if (value != null) {
-                        addParameter(NAME_VALUE, findValue(value, valueClazz));
-                    } else if (translatedName != null) {
-                        boolean evaluated = !translatedName.equals(this.name);
-                        boolean reevaluate = !evaluated || isAcceptableExpression(translatedName);
-                        if (!reevaluate) {
-                            addParameter(NAME_VALUE, translatedName);
-                        } else {
-                            String expr = completeExpression(translatedName);
-                            addParameter(NAME_VALUE, findValue(expr, valueClazz));
-                        }
-                    }
-                } else {
-                    if (value != null) {
-                        addParameter(NAME_VALUE, findValue(value));
-                    } else if (translatedName != null) {
-                        addParameter(NAME_VALUE, findValue(translatedName));
-                    }
-                }
-            }
-        }
+        applyValueParameter(translatedName);
 
         final Form form = (Form) findAncestor(Form.class);
 
@@ -833,11 +827,11 @@ public abstract class UIBean extends Component {
         populateComponentHtmlId(form);
 
         if (form != null ) {
-            addParameter("form", form.getParameters());
+            addParameter("form", form.getAttributes());
 
             if ( translatedName != null ) {
                 // list should have been created by the form component
-                List<String> tags = (List<String>) form.getParameters().get("tagNames");
+                List<String> tags = (List<String>) form.getAttributes().get("tagNames");
                 tags.add(translatedName);
             }
         }
@@ -869,19 +863,19 @@ public abstract class UIBean extends Component {
             }
 
             //TODO: this is to keep backward compatibility, remove once when tooltipConfig is dropped
-            String  jsTooltipEnabled = (String) getParameters().get("jsTooltipEnabled");
+            String  jsTooltipEnabled = (String) getAttributes().get("jsTooltipEnabled");
             if (jsTooltipEnabled != null)
                 this.javascriptTooltip = jsTooltipEnabled;
 
             //TODO: this is to keep backward compatibility, remove once when tooltipConfig is dropped
-            String tooltipIcon = (String) getParameters().get("tooltipIcon");
+            String tooltipIcon = (String) getAttributes().get("tooltipIcon");
             if (tooltipIcon != null)
                 this.addParameter("tooltipIconPath", tooltipIcon);
             if (this.tooltipIconPath != null)
                 this.addParameter("tooltipIconPath", findString(this.tooltipIconPath));
 
             //TODO: this is to keep backward compatibility, remove once when tooltipConfig is dropped
-            String tooltipDelayParam = (String) getParameters().get("tooltipDelay");
+            String tooltipDelayParam = (String) getAttributes().get("tooltipDelay");
             if (tooltipDelayParam != null)
                 this.addParameter("tooltipDelay", tooltipDelayParam);
             if (this.tooltipDelay != null)
@@ -900,13 +894,55 @@ public abstract class UIBean extends Component {
         }
 
         // to be used with the CSP interceptor - adds the nonce value as a parameter to be accessed from ftl files
-        Map<String, Object> session = stack.getActionContext().getSession();
-        Object nonceValue = session != null ? session.get("nonce") : null;
-        if (nonceValue != null) {
-            addParameter("nonce", nonceValue.toString());
+        CspNonceReader.NonceValue nonceValue = cspNonceReader.readNonceValue(stack);
+
+        if (nonceValue.isNonceValueSet()) {
+            addParameter("nonce", nonceValue.getNonceValue());
+        } else {
+            LOG.debug("Nonce not defined in: {}", nonceValue.getSource());
         }
 
         evaluateExtraParams();
+    }
+
+    /**
+     * Tries to calculate the "value" parameter based either on the provided {@link #value} or {@link #name}
+     * @param translatedName the already evaluated {@link #name}
+     */
+    protected void applyValueParameter(String translatedName) {
+        // see if the value has been specified as a parameter already
+        if (attributes.containsKey(ATTR_VALUE)) {
+            attributes.put(ATTR_NAME_VALUE, attributes.get(ATTR_VALUE));
+        } else {
+            if (evaluateNameValue()) {
+                final Class<?> valueClazz = getValueClassType();
+
+                if (valueClazz != null) {
+                    if (value != null) {
+                        addParameter(ATTR_NAME_VALUE, findValue(value, valueClazz));
+                    } else if (translatedName != null) {
+                        processTranslatedName(translatedName, (expr) -> findValue(expr, valueClazz));
+                    }
+                } else {
+                    if (value != null) {
+                        addParameter(ATTR_NAME_VALUE, findValue(value));
+                    } else if (translatedName != null) {
+                        processTranslatedName(translatedName, this::findValue);
+                    }
+                }
+            }
+        }
+    }
+
+    private void processTranslatedName(String translatedName, Function<String, Object> evaluator) {
+        boolean evaluated = !translatedName.equals(this.name);
+        boolean reevaluate = !evaluated || isAcceptableExpression(translatedName);
+        if (!reevaluate) {
+            addParameter(ATTR_NAME_VALUE, translatedName);
+        } else {
+            String expr = completeExpression(translatedName);
+            addParameter(ATTR_NAME_VALUE, evaluator.apply(expr));
+        }
     }
 
     protected String escape(String name) {
@@ -961,8 +997,9 @@ public abstract class UIBean extends Component {
         }
     }
 
+    @Deprecated(since = "7.0.1", forRemoval = true)
     protected Map<String, String> getTooltipConfig(UIBean component) {
-        Object tooltipConfigObj = component.getParameters().get("tooltipConfig");
+        Object tooltipConfigObj = component.getAttributes().get("tooltipConfig");
         Map<String, String> result = new LinkedHashMap<>();
 
         if (tooltipConfigObj instanceof Map) {
@@ -971,11 +1008,10 @@ public abstract class UIBean extends Component {
             // 2] <param name="tooltip" value="" /> param tag value attribute
 
             result = new LinkedHashMap<String, String>((Map) tooltipConfigObj);
-        } else if (tooltipConfigObj instanceof String) {
+        } else if (tooltipConfigObj instanceof String tooltipConfigStr) {
 
             // we get this if its configured using
             // <param name="tooltipConfig"> ... </param> tag's body
-            String tooltipConfigStr = (String) tooltipConfigObj;
             String[] tooltipConfigArray = tooltipConfigStr.split("\\|");
 
             for (String aTooltipConfigArray : tooltipConfigArray) {
@@ -1023,7 +1059,7 @@ public abstract class UIBean extends Component {
             LOG.debug("Cannot determine id attribute for [{}], consider defining id, name or key attribute!", this);
             tryId = null;
         } else if (form != null) {
-            tryId = form.getParameters().get("id") + "_" + generatedId;
+            tryId = form.getAttributes().get("id") + "_" + generatedId;
         } else {
             tryId = generatedId;
         }
@@ -1073,12 +1109,6 @@ public abstract class UIBean extends Component {
         this.cssClass = cssClass;
     }
 
-    @Deprecated
-    @StrutsTagAttribute(description="(Deprecated) The css class to use for element - it's an alias of cssClass attribute.")
-    public void setClass(String cssClass) {
-        this.cssClass = cssClass;
-    }
-
     @StrutsTagAttribute(description="The css style definitions for element to use")
     public void setCssStyle(String cssStyle) {
         this.cssStyle = cssStyle;
@@ -1119,16 +1149,6 @@ public abstract class UIBean extends Component {
         this.labelSeparator = labelseparator;
     }
 
-    /**
-     * Deprecated since 2.5.27
-     * @deprecated use {@link #setLabelPosition(String)} instead
-     */
-    @StrutsTagAttribute(description="(Deprecated) Define label position of form element (top/left)")
-    @Deprecated
-    public void setLabelposition(String labelPosition) {
-        this.labelPosition = labelPosition;
-    }
-
     @StrutsTagAttribute(description="Define label position of form element (top/left)")
     public void setLabelPosition(String labelPosition) {
         this.labelPosition = labelPosition;
@@ -1146,6 +1166,13 @@ public abstract class UIBean extends Component {
 
     @StrutsTagAttribute(description="The name to set for element")
     public void setName(String name) {
+        if (name != null && name.startsWith("$")) {
+            LOG.error("The name attribute should not usually be a templating variable." +
+                      " This can cause a critical vulnerability if the resolved value is derived from user input." +
+                      " If you are certain that you require this behaviour, please use OGNL expression syntax ( %{expr} ) instead.",
+                    new IllegalStateException());
+            return;
+        }
         this.name = name;
     }
 
@@ -1240,11 +1267,13 @@ public abstract class UIBean extends Component {
     }
 
     @StrutsTagAttribute(description="Set the tooltip of this particular component")
+    @Deprecated(since = "7.0.1", forRemoval = true)
     public void setTooltip(String tooltip) {
         this.tooltip = tooltip;
     }
 
     @StrutsTagAttribute(description="Deprecated. Use individual tooltip configuration attributes instead.")
+    @Deprecated(since = "7.0.1", forRemoval = true)
     public void setTooltipConfig(String tooltipConfig) {
         this.tooltipConfig = tooltipConfig;
     }
@@ -1255,22 +1284,26 @@ public abstract class UIBean extends Component {
     }
 
     @StrutsTagAttribute(description="Use JavaScript to generate tooltips", type="Boolean", defaultValue="false")
+    @Deprecated(since = "7.0.1", forRemoval = true)
     public void setJavascriptTooltip(String javascriptTooltip) {
         this.javascriptTooltip = javascriptTooltip;
     }
 
     @StrutsTagAttribute(description="CSS class applied to JavaScrip tooltips", defaultValue="StrutsTTClassic")
+    @Deprecated(since = "7.0.1", forRemoval = true)
     public void setTooltipCssClass(String tooltipCssClass) {
         this.tooltipCssClass = tooltipCssClass;
     }
 
     @StrutsTagAttribute(description="Delay in milliseconds, before showing JavaScript tooltips ",
         defaultValue="Classic")
+    @Deprecated(since = "7.0.1", forRemoval = true)
     public void setTooltipDelay(String tooltipDelay) {
         this.tooltipDelay = tooltipDelay;
     }
 
     @StrutsTagAttribute(description="Icon path used for image that will have the tooltip")
+    @Deprecated(since = "7.0.1", forRemoval = true)
     public void setTooltipIconPath(String tooltipIconPath) {
         this.tooltipIconPath = tooltipIconPath;
     }
@@ -1297,9 +1330,9 @@ public abstract class UIBean extends Component {
      * @see <a href="https://issues.apache.org/jira/browse/WW-4166">WW-4166</a>
      */
     @Override
-    public void copyParams(Map<String, Object> params) {
-        super.copyParams(params);
-        for (Map.Entry<String, Object>entry : params.entrySet()) {
+    public void copyAttributes(Map<String, Object> attributesToCopy) {
+        super.copyAttributes(attributesToCopy);
+        for (Map.Entry<String, Object>entry : attributesToCopy.entrySet()) {
             String entryKey = entry.getKey();
             if (!isValidTagAttribute(entryKey) && !entryKey.equals("dynamicAttributes")) {
                 dynamicAttributes.put(entryKey, entry.getValue());

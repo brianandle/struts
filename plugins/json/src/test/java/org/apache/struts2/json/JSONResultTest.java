@@ -18,19 +18,22 @@
  */
 package org.apache.struts2.json;
 
-import com.opensymphony.xwork2.ActionContext;
-import com.opensymphony.xwork2.Result;
-import com.opensymphony.xwork2.mock.MockActionInvocation;
-import com.opensymphony.xwork2.util.ValueStack;
+import jakarta.servlet.http.HttpServletResponse;
+import org.apache.struts2.ActionContext;
 import org.apache.struts2.StrutsStatics;
 import org.apache.struts2.junit.StrutsTestCase;
 import org.apache.struts2.junit.util.TestUtils;
+import org.apache.struts2.mock.MockActionInvocation;
+import org.apache.struts2.ognl.StrutsProxyCacheFactory;
+import org.apache.struts2.result.Result;
+import org.apache.struts2.util.StrutsProxyService;
+import org.apache.struts2.util.ProxyService;
+import org.apache.struts2.util.ValueStack;
 import org.springframework.aop.framework.ProxyFactory;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.mock.web.MockServletContext;
 
-import javax.servlet.http.HttpServletResponse;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.text.SimpleDateFormat;
@@ -56,6 +59,7 @@ public class JSONResultTest extends StrutsTestCase {
     ActionContext context;
     ValueStack stack;
     MockHttpServletRequest request;
+    ProxyService proxyService;
 
     public void testJSONUtilNPEOnNullMehtod() {
         Map map = new HashMap();
@@ -157,7 +161,8 @@ public class JSONResultTest extends StrutsTestCase {
     public void testNotTraverseOrIncludeProxyInfo() throws Exception {
         JSONResult result = new JSONResult();
         JSONUtil jsonUtil = new JSONUtil();
-        JSONWriter writer = new DefaultJSONWriter();
+        DefaultJSONWriter writer = new DefaultJSONWriter();
+        writer.setProxyService(proxyService);
         jsonUtil.setWriter(writer);
         result.setJsonUtil(jsonUtil);
         Object proxiedAction = new ProxyFactory(new TestAction2()).getProxy();
@@ -737,5 +742,6 @@ public class JSONResultTest extends StrutsTestCase {
         this.invocation = new MockActionInvocation();
         this.invocation.setInvocationContext(this.context);
         this.invocation.setStack(this.stack);
+        this.proxyService = new StrutsProxyService(new StrutsProxyCacheFactory<>("1000", "basic"));
     }
 }

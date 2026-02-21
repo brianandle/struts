@@ -18,9 +18,9 @@
  */
 package org.apache.struts2.components;
 
-import com.opensymphony.xwork2.ActionContext;
-import com.opensymphony.xwork2.util.ValueStack;
-import com.opensymphony.xwork2.util.ValueStackFactory;
+import org.apache.struts2.ActionContext;
+import org.apache.struts2.util.ValueStack;
+import org.apache.struts2.util.ValueStackFactory;
 import org.apache.struts2.StrutsInternalTestCase;
 import org.apache.struts2.components.date.SimpleDateFormatAdapter;
 
@@ -28,6 +28,7 @@ import java.io.StringWriter;
 import java.io.Writer;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
+import java.time.format.DateTimeFormatter;
 import java.util.Map;
 
 public class DateTest extends StrutsInternalTestCase {
@@ -66,7 +67,7 @@ public class DateTest extends StrutsInternalTestCase {
 
         java.util.Date now = new java.util.Date();
 
-        String expected = SimpleDateFormat.getDateInstance(DateFormat.MEDIUM, ActionContext.getContext().getLocale()).format(now);
+        String expected = prepareFormat().format(now);
         context.put("myDate", now);
 
         Writer writer = new StringWriter();
@@ -88,7 +89,7 @@ public class DateTest extends StrutsInternalTestCase {
 
         java.sql.Date now = new java.sql.Date(System.currentTimeMillis());
 
-        String expected = SimpleDateFormat.getDateInstance(DateFormat.MEDIUM, ActionContext.getContext().getLocale()).format(now);
+        String expected = prepareFormat().format(now);
         context.put("myDate", now);
 
         Writer writer = new StringWriter();
@@ -101,6 +102,58 @@ public class DateTest extends StrutsInternalTestCase {
 
         // then
         assertEquals(expected, writer.toString());
+    }
+
+    public void testJavaSqlTime() {
+        // given
+        Date date = new Date(stack);
+        date.setDateFormatter(new SimpleDateFormatAdapter());
+
+        java.sql.Time now = new java.sql.Time(System.currentTimeMillis());
+
+        String timeFormat = "hh:mm:ss";
+        String expected = new SimpleDateFormat(timeFormat, ActionContext.getContext().getLocale()).format(now);
+        context.put("myDate", now);
+
+        Writer writer = new StringWriter();
+
+        // when
+        date.setName("myDate");
+        date.setNice(false);
+        date.setFormat(timeFormat);
+        date.start(writer);
+        date.end(writer, "");
+
+        // then
+        assertEquals(expected, writer.toString());
+    }
+
+    public void testJavaLocalTime() {
+        // given
+        Date date = new Date(stack);
+        date.setDateFormatter(new SimpleDateFormatAdapter());
+
+        java.time.LocalTime now = java.time.LocalTime.now();
+
+        String timeFormat = "hh:mm:ss";
+        String expected = DateTimeFormatter.ofPattern(timeFormat).format(now);
+        context.put("myTime", now);
+
+        Writer writer = new StringWriter();
+
+        // when
+        date.setName("myTime");
+        date.setNice(false);
+        date.setFormat(timeFormat);
+        date.start(writer);
+        date.end(writer, "");
+
+        // then
+        assertEquals(expected, writer.toString());
+    }
+
+    private DateFormat prepareFormat() {
+        return SimpleDateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.MEDIUM, ActionContext.getContext().getLocale());
     }
 
     @Override

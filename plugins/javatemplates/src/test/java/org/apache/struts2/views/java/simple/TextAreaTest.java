@@ -22,6 +22,8 @@ package org.apache.struts2.views.java.simple;
 
 import org.apache.struts2.components.TextArea;
 import org.apache.struts2.components.UIBean;
+import org.apache.struts2.interceptor.csp.CspNonceSource;
+import org.apache.struts2.interceptor.csp.StrutsCspNonceReader;
 
 public class TextAreaTest extends AbstractCommonAttributesTest {
     private TextArea tag;
@@ -41,7 +43,7 @@ public class TextAreaTest extends AbstractCommonAttributesTest {
 
 
         tag.evaluateParams();
-        map.putAll(tag.getParameters());
+        map.putAll(tag.getAttributes());
         theme.renderTag(getTagName(), context);
         String output = writer.getBuffer().toString();
         String expected = s("<textarea name='name' cols='2' rows='1' disabled='disabled' tabindex='1' id='id1' class='class1' style='style1' title='title'>val1</textarea>");
@@ -60,7 +62,7 @@ public class TextAreaTest extends AbstractCommonAttributesTest {
 
 
         tag.evaluateParams();
-        map.putAll(tag.getParameters());
+        map.putAll(tag.getAttributes());
         theme.renderTag(getTagName(), context);
         String output = writer.getBuffer().toString();
         String expected = s("<textarea name='' cols='' rows='' disabled='disabled' tabindex='1' id='id1' class='class1' style='style1' title='title'>val1</textarea>");
@@ -71,6 +73,7 @@ public class TextAreaTest extends AbstractCommonAttributesTest {
     protected void setUp() throws Exception {
         super.setUp();
         this.tag = new TextArea(stack, request, response);
+        this.tag.setCspNonceReader(new StrutsCspNonceReader(CspNonceSource.SESSION.name()));
     }
 
     @Override

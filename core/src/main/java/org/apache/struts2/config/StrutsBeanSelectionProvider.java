@@ -18,55 +18,68 @@
  */
 package org.apache.struts2.config;
 
-import com.opensymphony.xwork2.ActionProxyFactory;
-import com.opensymphony.xwork2.LocaleProviderFactory;
-import com.opensymphony.xwork2.LocalizedTextProvider;
-import com.opensymphony.xwork2.TextProviderFactory;
-import com.opensymphony.xwork2.factory.UnknownHandlerFactory;
-import com.opensymphony.xwork2.ognl.BeanInfoCacheFactory;
-import com.opensymphony.xwork2.ognl.ExpressionCacheFactory;
-import com.opensymphony.xwork2.security.AcceptedPatternsChecker;
-import com.opensymphony.xwork2.security.ExcludedPatternsChecker;
-import com.opensymphony.xwork2.FileManager;
-import com.opensymphony.xwork2.FileManagerFactory;
-import com.opensymphony.xwork2.ObjectFactory;
-import com.opensymphony.xwork2.TextProvider;
-import com.opensymphony.xwork2.UnknownHandlerManager;
-import com.opensymphony.xwork2.conversion.ConversionAnnotationProcessor;
-import com.opensymphony.xwork2.conversion.ConversionFileProcessor;
-import com.opensymphony.xwork2.conversion.ConversionPropertiesProcessor;
-import com.opensymphony.xwork2.conversion.ObjectTypeDeterminer;
-import com.opensymphony.xwork2.conversion.TypeConverterCreator;
-import com.opensymphony.xwork2.conversion.TypeConverterHolder;
-import com.opensymphony.xwork2.conversion.impl.ArrayConverter;
-import com.opensymphony.xwork2.conversion.impl.CollectionConverter;
-import com.opensymphony.xwork2.conversion.impl.DateConverter;
-import com.opensymphony.xwork2.conversion.impl.NumberConverter;
-import com.opensymphony.xwork2.conversion.impl.StringConverter;
-import com.opensymphony.xwork2.conversion.impl.XWorkConverter;
-import com.opensymphony.xwork2.factory.ActionFactory;
-import com.opensymphony.xwork2.factory.ConverterFactory;
-import com.opensymphony.xwork2.factory.InterceptorFactory;
-import com.opensymphony.xwork2.factory.ResultFactory;
-import com.opensymphony.xwork2.factory.ValidatorFactory;
-import com.opensymphony.xwork2.inject.ContainerBuilder;
-import com.opensymphony.xwork2.inject.Scope;
-import com.opensymphony.xwork2.security.NotExcludedAcceptedPatternsChecker;
-import com.opensymphony.xwork2.util.PatternMatcher;
-import com.opensymphony.xwork2.util.TextParser;
-import com.opensymphony.xwork2.util.ValueStackFactory;
-import com.opensymphony.xwork2.util.location.LocatableProperties;
-import com.opensymphony.xwork2.util.reflection.ReflectionContextFactory;
-import com.opensymphony.xwork2.util.reflection.ReflectionProvider;
-import com.opensymphony.xwork2.validator.ActionValidatorManager;
+import ognl.MethodAccessor;
+import org.apache.struts2.ActionProxyFactory;
+import org.apache.struts2.FileManager;
+import org.apache.struts2.FileManagerFactory;
+import org.apache.struts2.locale.LocaleProviderFactory;
+import org.apache.struts2.text.LocalizedTextProvider;
+import org.apache.struts2.ObjectFactory;
 import org.apache.struts2.StrutsConstants;
+import org.apache.struts2.text.TextProvider;
+import org.apache.struts2.text.TextProviderFactory;
+import org.apache.struts2.UnknownHandlerManager;
 import org.apache.struts2.components.UrlRenderer;
 import org.apache.struts2.components.date.DateFormatter;
+import org.apache.struts2.conversion.ConversionAnnotationProcessor;
+import org.apache.struts2.conversion.ConversionFileProcessor;
+import org.apache.struts2.conversion.ConversionPropertiesProcessor;
+import org.apache.struts2.conversion.ObjectTypeDeterminer;
+import org.apache.struts2.conversion.TypeConverterCreator;
+import org.apache.struts2.conversion.TypeConverterHolder;
+import org.apache.struts2.conversion.UserConversionPropertiesProvider;
+import org.apache.struts2.conversion.impl.ArrayConverter;
+import org.apache.struts2.conversion.impl.CollectionConverter;
+import org.apache.struts2.conversion.impl.DateConverter;
+import org.apache.struts2.conversion.impl.NumberConverter;
+import org.apache.struts2.conversion.impl.StringConverter;
+import org.apache.struts2.conversion.impl.XWorkConverter;
 import org.apache.struts2.dispatcher.DispatcherErrorHandler;
 import org.apache.struts2.dispatcher.StaticContentLoader;
 import org.apache.struts2.dispatcher.mapper.ActionMapper;
 import org.apache.struts2.dispatcher.multipart.MultiPartRequest;
+import org.apache.struts2.factory.ActionFactory;
+import org.apache.struts2.factory.ConverterFactory;
+import org.apache.struts2.factory.InterceptorFactory;
+import org.apache.struts2.factory.ResultFactory;
+import org.apache.struts2.factory.UnknownHandlerFactory;
+import org.apache.struts2.factory.ValidatorFactory;
+import org.apache.struts2.inject.ContainerBuilder;
+import org.apache.struts2.inject.Scope;
+import org.apache.struts2.interceptor.csp.CspNonceReader;
+import org.apache.struts2.interceptor.exec.ExecutorProvider;
+import org.apache.struts2.ognl.BeanInfoCacheFactory;
+import org.apache.struts2.ognl.ExpressionCacheFactory;
+import org.apache.struts2.ognl.OgnlGuard;
+import org.apache.struts2.ognl.ProxyCacheFactory;
+import org.apache.struts2.ognl.SecurityMemberAccess;
+import org.apache.struts2.ognl.accessor.RootAccessor;
+import org.apache.struts2.security.AcceptedPatternsChecker;
+import org.apache.struts2.security.ExcludedPatternsChecker;
+import org.apache.struts2.security.NotExcludedAcceptedPatternsChecker;
+import org.apache.struts2.url.QueryStringBuilder;
+import org.apache.struts2.url.QueryStringParser;
+import org.apache.struts2.url.UrlDecoder;
+import org.apache.struts2.url.UrlEncoder;
 import org.apache.struts2.util.ContentTypeMatcher;
+import org.apache.struts2.util.PatternMatcher;
+import org.apache.struts2.util.ProxyService;
+import org.apache.struts2.util.TextParser;
+import org.apache.struts2.util.ValueStackFactory;
+import org.apache.struts2.util.location.LocatableProperties;
+import org.apache.struts2.util.reflection.ReflectionContextFactory;
+import org.apache.struts2.util.reflection.ReflectionProvider;
+import org.apache.struts2.validator.ActionValidatorManager;
 import org.apache.struts2.views.freemarker.FreemarkerManager;
 import org.apache.struts2.views.util.UrlHelper;
 
@@ -78,7 +91,7 @@ import org.apache.struts2.views.util.UrlHelper;
  *
  * <p>
  * The following is a list of the allowed extension points:
- *
+ * <p>
  * <!-- START SNIPPET: extensionPoints -->
  * <table border="1" summary="">
  *   <tr>
@@ -88,49 +101,49 @@ import org.apache.struts2.views.util.UrlHelper;
  *     <th>Description</th>
  *   </tr>
  *   <tr>
- *     <td>com.opensymphony.xwork2.ObjectFactory</td>
+ *     <td>org.apache.struts2.ObjectFactory</td>
  *     <td>struts.objectFactory</td>
  *     <td>singleton</td>
  *     <td>Creates actions, results, and interceptors</td>
  *   </tr>
  *   <tr>
- *     <td>com.opensymphony.xwork2.factory.ActionFactory</td>
+ *     <td>org.apache.struts2.factory.ActionFactory</td>
  *     <td>struts.objectFactory.actionFactory</td>
  *     <td>singleton</td>
  *     <td>Dedicated factory used to create Actions, you can implement/extend existing one instead of defining new ObjectFactory</td>
  *   </tr>
  *   <tr>
- *     <td>com.opensymphony.xwork2.factory.ResultFactory</td>
+ *     <td>org.apache.struts2.factory.ResultFactory</td>
  *     <td>struts.objectFactory.resultFactory</td>
  *     <td>singleton</td>
  *     <td>Dedicated factory used to create Results, you can implement/extend existing one instead of defining new ObjectFactory</td>
  *   </tr>
  *   <tr>
- *     <td>com.opensymphony.xwork2.factory.InterceptorFactory</td>
+ *     <td>org.apache.struts2.factory.InterceptorFactory</td>
  *     <td>struts.objectFactory.interceptorFactory</td>
  *     <td>singleton</td>
  *     <td>Dedicated factory used to create Interceptors, you can implement/extend existing one instead of defining new ObjectFactory</td>
  *   </tr>
  *   <tr>
- *     <td>com.opensymphony.xwork2.factory.ConverterFactory</td>
+ *     <td>org.apache.struts2.factory.ConverterFactory</td>
  *     <td>struts.objectFactory.converterFactory</td>
  *     <td>singleton</td>
  *     <td>Dedicated factory used to create TypeConverters, you can implement/extend existing one instead of defining new ObjectFactory</td>
  *   </tr>
  *   <tr>
- *     <td>com.opensymphony.xwork2.factory.ValidatorFactory</td>
+ *     <td>org.apache.struts2.factory.ValidatorFactory</td>
  *     <td>struts.objectFactory.validatorFactory</td>
  *     <td>singleton</td>
  *     <td>Dedicated factory used to create Validators, you can implement/extend existing one instead of defining new ObjectFactory</td>
  *   </tr>
  *   <tr>
- *     <td>com.opensymphony.xwork2.ActionProxyFactory</td>
+ *     <td>org.apache.struts2.ActionProxyFactory</td>
  *     <td>struts.actionProxyFactory</td>
  *     <td>singleton</td>
  *     <td>Creates the ActionProxy</td>
  *   </tr>
  *   <tr>
- *     <td>com.opensymphony.xwork2.util.ObjectTypeDeterminer</td>
+ *     <td>org.apache.struts2.util.ObjectTypeDeterminer</td>
  *     <td>struts.objectTypeDeterminer</td>
  *     <td>singleton</td>
  *     <td>Determines what the key and element class of a Map or Collection should be</td>
@@ -160,38 +173,38 @@ import org.apache.struts2.views.util.UrlHelper;
  *     <td>Loads and processes Velocity templates</td>
  *   </tr>
  *   <tr>
- *     <td>com.opensymphony.xwork2.validator.ActionValidatorManager</td>
+ *     <td>org.apache.struts2.validator.ActionValidatorManager</td>
  *     <td>struts.actionValidatorManager</td>
  *     <td>singleton</td>
  *     <td>Main interface for validation managers (regular and annotation based).  Handles both the loading of
  *         configuration and the actual validation (since 2.1)</td>
  *   </tr>
  *   <tr>
- *     <td>com.opensymphony.xwork2.util.ValueStackFactory</td>
+ *     <td>org.apache.struts2.util.ValueStackFactory</td>
  *     <td>struts.valueStackFactory</td>
  *     <td>singleton</td>
  *     <td>Creates value stacks (since 2.1)</td>
  *   </tr>
  *   <tr>
- *     <td>com.opensymphony.xwork2.reflection.ReflectionProvider</td>
+ *     <td>org.apache.struts2.reflection.ReflectionProvider</td>
  *     <td>struts.reflectionProvider</td>
  *     <td>singleton</td>
  *     <td>Provides reflection services, key place to plug in a custom expression language (since 2.1)</td>
  *   </tr>
  *   <tr>
- *     <td>com.opensymphony.xwork2.reflection.ReflectionContextFactory</td>
+ *     <td>org.apache.struts2.reflection.ReflectionContextFactory</td>
  *     <td>struts.reflectionContextFactory</td>
  *     <td>singleton</td>
  *     <td>Creates reflection context maps used for reflection and expression language operations (since 2.1)</td>
  *   </tr>
  *   <tr>
- *     <td>com.opensymphony.xwork2.config.PackageProvider</td>
+ *     <td>org.apache.struts2.config.PackageProvider</td>
  *     <td>N/A</td>
  *     <td>singleton</td>
  *     <td>All beans registered as PackageProvider implementations will be automatically included in configuration building (since 2.1)</td>
  *   </tr>
  *   <tr>
- *     <td>com.opensymphony.xwork2.util.PatternMatcher</td>
+ *     <td>org.apache.struts2.util.PatternMatcher</td>
  *     <td>struts.patternMatcher</td>
  *     <td>singleton</td>
  *     <td>Matches patterns, such as action names, generally used in configuration (since 2.1)</td>
@@ -203,25 +216,25 @@ import org.apache.struts2.views.util.UrlHelper;
  *     <td>Loads static resources (since 2.1)</td>
  *   </tr>
  *   <tr>
- *     <td>com.opensymphony.xwork2.conversion.impl.XWorkConverter</td>
+ *     <td>org.apache.struts2.conversion.impl.XWorkConverter</td>
  *     <td>struts.xworkConverter</td>
  *     <td>singleton</td>
  *     <td>Handles conversion logic and allows to load custom converters per class or per action</td>
  *   </tr>
  *   <tr>
- *     <td>com.opensymphony.xwork2.TextProvider</td>
+ *     <td>org.apache.struts2.TextProvider</td>
  *     <td>struts.textProvider</td>
  *     <td>default</td>
  *     <td>Allows provide custom TextProvider for whole application, it's better to use struts.textProviderFactory</td>
  *   </tr>
  *   <tr>
- *     <td>com.opensymphony.xwork2.TextProviderFactory</td>
+ *     <td>org.apache.struts2.TextProviderFactory</td>
  *     <td>struts.textProviderFactory</td>
  *     <td>default</td>
  *     <td>Allows provide custom TextProviderFactory for whole application</td>
  *   </tr>
  *   <tr>
- *     <td>com.opensymphony.xwork2.LocaleProviderFactory</td>
+ *     <td>org.apache.struts2.LocaleProviderFactory</td>
  *     <td>struts.localeProviderFactory</td>
  *     <td>singleton</td>
  *     <td>Allows provide custom LocaleProvider for whole application</td>
@@ -233,7 +246,7 @@ import org.apache.struts2.views.util.UrlHelper;
  *     <td>Allows provide custom implementation of environment specific URL rendering/creating class</td>
  *   </tr>
  *   <tr>
- *     <td>com.opensymphony.xwork2.UnknownHandlerManager</td>
+ *     <td>org.apache.struts2.UnknownHandlerManager</td>
  *     <td>struts.unknownHandlerManager</td>
  *     <td>singleton</td>
  *     <td>Implementation of this interface allows handle logic of unknown Actions, Methods or Results</td>
@@ -245,87 +258,87 @@ import org.apache.struts2.views.util.UrlHelper;
  *     <td>Helper class used with URLRenderer to provide exact logic for building URLs</td>
  *   </tr>
  *   <tr>
- *     <td>com.opensymphony.xwork2.FileManagerFactory</td>
+ *     <td>org.apache.struts2.FileManagerFactory</td>
  *     <td>struts.fileManagerFactory</td>
  *     <td>singleton</td>
  *     <td>Used to create {@link FileManager} instance to access files on the File System as also to monitor if reload is needed,
  *     can be implemented / overwritten to meet specific an application server needs
  *     </td>
  *   <tr>
- *     <td>com.opensymphony.xwork2.conversion.impl.CollectionConverter</td>
+ *     <td>org.apache.struts2.conversion.impl.CollectionConverter</td>
  *     <td>struts.converter.collection</td>
  *     <td>singleton</td>
  *     <td>Converter used to convert any object to Collection and back</td>
  *   </tr>
  *   <tr>
- *     <td>com.opensymphony.xwork2.conversion.impl.ArrayConverter</td>
+ *     <td>org.apache.struts2.conversion.impl.ArrayConverter</td>
  *     <td>struts.converter.array</td>
  *     <td>singleton</td>
  *     <td>Converter used to convert any object to Array and back</td>
  *   </tr>
  *   <tr>
- *     <td>com.opensymphony.xwork2.conversion.impl.DateConverter</td>
+ *     <td>org.apache.struts2.conversion.impl.DateConverter</td>
  *     <td>struts.converter.date</td>
  *     <td>singleton</td>
  *     <td>Converter used to convert any object to Date and back</td>
  *   </tr>
  *   <tr>
- *     <td>com.opensymphony.xwork2.conversion.impl.NumberConverter</td>
+ *     <td>org.apache.struts2.conversion.impl.NumberConverter</td>
  *     <td>struts.converter.number</td>
  *     <td>singleton</td>
  *     <td>Converter used to convert any object to Number and back</td>
  *   </tr>
  *   <tr>
- *     <td>com.opensymphony.xwork2.conversion.impl.StringConverter</td>
+ *     <td>org.apache.struts2.conversion.impl.StringConverter</td>
  *     <td>struts.converter.string</td>
  *     <td>singleton</td>
  *     <td>Converter used to convert any object to String and back</td>
  *   </tr>
  *   <tr>
- *     <td>com.opensymphony.xwork2.conversion.ConversionPropertiesProcessor</td>
+ *     <td>org.apache.struts2.conversion.ConversionPropertiesProcessor</td>
  *     <td>struts.conversion.properties.processor</td>
  *     <td>singleton</td>
  *     <td>Process Properties to create converters</td>
  *   </tr>
  *   <tr>
- *     <td>com.opensymphony.xwork2.conversion.ConversionPropertiesProcessor</td>
+ *     <td>org.apache.struts2.conversion.ConversionPropertiesProcessor</td>
  *     <td>struts.converter.file.processor</td>
  *     <td>singleton</td>
  *     <td>Process &lt;class&gt;-conversion.properties file create converters&lt;/class&gt;</td>
  *   </tr>
  *   <tr>
- *     <td>com.opensymphony.xwork2.conversion.ConversionAnnotationProcessor</td>
+ *     <td>org.apache.struts2.conversion.ConversionAnnotationProcessor</td>
  *     <td>struts.converter.annotation.processor</td>
  *     <td>singleton</td>
  *     <td>Process TypeConversion annotation to create converters</td>
  *   </tr>
  *   <tr>
- *     <td>com.opensymphony.xwork2.conversion.TypeConverterCreator</td>
+ *     <td>org.apache.struts2.conversion.TypeConverterCreator</td>
  *     <td>struts.converter.creator</td>
  *     <td>singleton</td>
  *     <td>Creates user converters</td>
  *   </tr>
  *   <tr>
- *     <td>com.opensymphony.xwork2.conversion.TypeConverterHolder</td>
+ *     <td>org.apache.struts2.conversion.TypeConverterHolder</td>
  *     <td>struts.converter.holder</td>
  *     <td>singleton</td>
  *     <td>Holds user converters' instances</td>
  *   </tr>
  *   <tr>
- *     <td>com.opensymphony.xwork2.util.TextParser</td>
+ *     <td>org.apache.struts2.util.TextParser</td>
  *     <td>struts.expression.parser</td>
  *     <td>singleton</td>
  *     <td>Used to parse expressions like ${foo.bar} or %{bar.foo} but it is up tp the TextParser's
  *         implementation what kind of opening char to use (#, $, %, etc)</td>
  *   </tr>
  *   <tr>
- *     <td>com.opensymphony.xwork2.ExcludedPatternsChecker</td>
+ *     <td>org.apache.struts2.ExcludedPatternsChecker</td>
  *     <td>struts.excludedPatterns.checker</td>
  *     <td>request</td>
  *     <td>Used across different interceptors to check if given string matches one of the excluded patterns</td>
  *   </tr>
  *   <tr>
- *     <td>com.opensymphony.xwork2.AcceptedPatternsChecker</td>
+ *     <td>org.apache.struts2.AcceptedPatternsChecker</td>
  *     <td>struts.acceptedPatterns.checker</td>
  *     <td>request</td>
  *     <td>Used across different interceptors to check if given string matches one of the accepted patterns</td>
@@ -337,13 +350,13 @@ import org.apache.struts2.views.util.UrlHelper;
  *     <td>Matches content type of uploaded files (since 2.3.22)</td>
  *   </tr>
  *   <tr>
- *     <td>com.opensymphony.xwork2.LocalizedTextProvider</td>
+ *     <td>org.apache.struts2.LocalizedTextProvider</td>
  *     <td>struts.localizedTextProvider</td>
  *     <td>singleton</td>
  *     <td>Provides access to resource bundles used to localise messages (since 2.5.11)</td>
  *   </tr>
  * </table>
- *
+ * <p>
  * <!-- END SNIPPET: extensionPoints -->
  *
  * <p>
@@ -380,6 +393,9 @@ public class StrutsBeanSelectionProvider extends AbstractBeanSelectionProvider {
 
         alias(FileManagerFactory.class, StrutsConstants.STRUTS_FILE_MANAGER_FACTORY, builder, props, Scope.SINGLETON);
 
+        alias(RootAccessor.class, StrutsConstants.STRUTS_COMPOUND_ROOT_ACCESSOR, builder, props);
+        alias(MethodAccessor.class, StrutsConstants.STRUTS_METHOD_ACCESSOR, builder, props);
+
         alias(XWorkConverter.class, StrutsConstants.STRUTS_XWORKCONVERTER, builder, props);
         alias(CollectionConverter.class, StrutsConstants.STRUTS_CONVERTER_COLLECTION, builder, props);
         alias(ArrayConverter.class, StrutsConstants.STRUTS_CONVERTER_ARRAY, builder, props);
@@ -392,6 +408,7 @@ public class StrutsBeanSelectionProvider extends AbstractBeanSelectionProvider {
         alias(ConversionAnnotationProcessor.class, StrutsConstants.STRUTS_CONVERTER_ANNOTATION_PROCESSOR, builder, props);
         alias(TypeConverterCreator.class, StrutsConstants.STRUTS_CONVERTER_CREATOR, builder, props);
         alias(TypeConverterHolder.class, StrutsConstants.STRUTS_CONVERTER_HOLDER, builder, props);
+        alias(UserConversionPropertiesProvider.class, StrutsConstants.STRUTS_CONVERTER_USER_PROPERTIES_PROVIDER, builder, props);
 
         alias(TextProvider.class, StrutsConstants.STRUTS_TEXT_PROVIDER, builder, props, Scope.PROTOTYPE);
         alias(TextProviderFactory.class, StrutsConstants.STRUTS_TEXT_PROVIDER_FACTORY, builder, props, Scope.PROTOTYPE);
@@ -421,13 +438,26 @@ public class StrutsBeanSelectionProvider extends AbstractBeanSelectionProvider {
         /** Checker is used mostly in interceptors, so there be one instance of checker per interceptor with Scope.PROTOTYPE **/
         alias(ExcludedPatternsChecker.class, StrutsConstants.STRUTS_EXCLUDED_PATTERNS_CHECKER, builder, props, Scope.PROTOTYPE);
         alias(AcceptedPatternsChecker.class, StrutsConstants.STRUTS_ACCEPTED_PATTERNS_CHECKER, builder, props, Scope.PROTOTYPE);
-        alias(NotExcludedAcceptedPatternsChecker.class, StrutsConstants.STRUTS_NOT_EXCLUDED_ACCEPTED_PATTERNS_CHECKER
-                , builder, props, Scope.SINGLETON);
+        alias(NotExcludedAcceptedPatternsChecker.class, StrutsConstants.STRUTS_NOT_EXCLUDED_ACCEPTED_PATTERNS_CHECKER, builder, props, Scope.SINGLETON);
 
         alias(DateFormatter.class, StrutsConstants.STRUTS_DATE_FORMATTER, builder, props, Scope.SINGLETON);
 
         alias(ExpressionCacheFactory.class, StrutsConstants.STRUTS_OGNL_EXPRESSION_CACHE_FACTORY, builder, props, Scope.SINGLETON);
         alias(BeanInfoCacheFactory.class, StrutsConstants.STRUTS_OGNL_BEANINFO_CACHE_FACTORY, builder, props, Scope.SINGLETON);
+        alias(ProxyCacheFactory.class, StrutsConstants.STRUTS_PROXY_CACHE_FACTORY, builder, props, Scope.SINGLETON);
+        alias(ProxyService.class, StrutsConstants.STRUTS_PROXYSERVICE, builder, props, Scope.SINGLETON);
+
+        alias(SecurityMemberAccess.class, StrutsConstants.STRUTS_MEMBER_ACCESS, builder, props, Scope.PROTOTYPE);
+        alias(OgnlGuard.class, StrutsConstants.STRUTS_OGNL_GUARD, builder, props, Scope.SINGLETON);
+
+        alias(QueryStringBuilder.class, StrutsConstants.STRUTS_URL_QUERY_STRING_BUILDER, builder, props, Scope.SINGLETON);
+        alias(QueryStringParser.class, StrutsConstants.STRUTS_URL_QUERY_STRING_PARSER, builder, props, Scope.SINGLETON);
+        alias(UrlEncoder.class, StrutsConstants.STRUTS_URL_ENCODER, builder, props, Scope.SINGLETON);
+        alias(UrlDecoder.class, StrutsConstants.STRUTS_URL_DECODER, builder, props, Scope.SINGLETON);
+
+        alias(ExecutorProvider.class, StrutsConstants.STRUTS_EXECUTOR_PROVIDER, builder, props, Scope.SINGLETON);
+
+        alias(CspNonceReader.class, StrutsConstants.STRUTS_CSP_NONCE_READER, builder, props, Scope.SINGLETON);
 
         switchDevMode(props);
     }

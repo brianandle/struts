@@ -28,6 +28,7 @@ import java.util.Map;
 
 
 /**
+ *
  */
 public class TextfieldTest extends AbstractUITagTest {
 
@@ -37,7 +38,7 @@ public class TextfieldTest extends AbstractUITagTest {
      * String, String[])} as properties to verify.<br> This implementation extends testdata from AbstractUITag.
      *
      * @return A Map of PropertyHolders values bound to {@link org.apache.struts2.views.jsp.AbstractUITagTest.PropertyHolder#getName()}
-     *         as key.
+     * as key.
      */
     @Override
     protected Map<String, PropertyHolder> initializedGenericTagTestProperties() {
@@ -56,6 +57,17 @@ public class TextfieldTest extends AbstractUITagTest {
     public void testGenericXhtml() throws Exception {
         TextFieldTag tag = new TextFieldTag();
         verifyGenericProperties(tag, "xhtml", null);
+    }
+
+    public void testGenericHtml5() throws Exception {
+        TextFieldTag tag = new TextFieldTag();
+        verifyGenericProperties(tag, "html5", null);
+    }
+
+    public void testGenericHtml5_clearTagStateSet() throws Exception {
+        TextFieldTag tag = new TextFieldTag();
+        tag.setPerformClearTagStateForTagPoolingServers(true);
+        verifyGenericProperties(tag, "html5", null);
     }
 
     public void testErrors() throws Exception {
@@ -81,7 +93,7 @@ public class TextfieldTest extends AbstractUITagTest {
         freshTag.setPageContext(pageContext);
         assertFalse("Tag state after doEndTag() under default tag clear state is equal to new Tag with pageContext/parent set.  " +
                 "May indicate that clearTagStateForTagPoolingServers() calls are not working properly.",
-                strutsBodyTagsAreReflectionEqual(tag, freshTag));
+            strutsBodyTagsAreReflectionEqual(tag, freshTag));
     }
 
     public void testErrors_clearTagStateSet() throws Exception {
@@ -110,7 +122,7 @@ public class TextfieldTest extends AbstractUITagTest {
         freshTag.setPageContext(pageContext);
         assertTrue("Tag state after doEndTag() and explicit tag state clearing is inequal to new Tag with pageContext/parent set.  " +
                 "May indicate that clearTagStateForTagPoolingServers() calls are not working properly.",
-                strutsBodyTagsAreReflectionEqual(tag, freshTag));
+            strutsBodyTagsAreReflectionEqual(tag, freshTag));
     }
 
     public void testNoLabelJsp() throws Exception {
@@ -134,7 +146,7 @@ public class TextfieldTest extends AbstractUITagTest {
         freshTag.setPageContext(pageContext);
         assertFalse("Tag state after doEndTag() under default tag clear state is equal to new Tag with pageContext/parent set.  " +
                 "May indicate that clearTagStateForTagPoolingServers() calls are not working properly.",
-                strutsBodyTagsAreReflectionEqual(tag, freshTag));
+            strutsBodyTagsAreReflectionEqual(tag, freshTag));
     }
 
     public void testNoLabelJsp_clearTagStateSet() throws Exception {
@@ -161,7 +173,7 @@ public class TextfieldTest extends AbstractUITagTest {
         freshTag.setPageContext(pageContext);
         assertTrue("Tag state after doEndTag() and explicit tag state clearing is inequal to new Tag with pageContext/parent set.  " +
                 "May indicate that clearTagStateForTagPoolingServers() calls are not working properly.",
-                strutsBodyTagsAreReflectionEqual(tag, freshTag));
+            strutsBodyTagsAreReflectionEqual(tag, freshTag));
     }
 
     public void testLabelSeparatorJsp() throws Exception {
@@ -187,7 +199,7 @@ public class TextfieldTest extends AbstractUITagTest {
         freshTag.setPageContext(pageContext);
         assertFalse("Tag state after doEndTag() under default tag clear state is equal to new Tag with pageContext/parent set.  " +
                 "May indicate that clearTagStateForTagPoolingServers() calls are not working properly.",
-                strutsBodyTagsAreReflectionEqual(tag, freshTag));
+            strutsBodyTagsAreReflectionEqual(tag, freshTag));
     }
 
     public void testLabelSeparatorJsp_clearTagStateSet() throws Exception {
@@ -216,7 +228,7 @@ public class TextfieldTest extends AbstractUITagTest {
         freshTag.setPageContext(pageContext);
         assertTrue("Tag state after doEndTag() and explicit tag state clearing is inequal to new Tag with pageContext/parent set.  " +
                 "May indicate that clearTagStateForTagPoolingServers() calls are not working properly.",
-                strutsBodyTagsAreReflectionEqual(tag, freshTag));
+            strutsBodyTagsAreReflectionEqual(tag, freshTag));
     }
 
     public void testNoLabelFtl() throws Exception {
@@ -257,7 +269,7 @@ public class TextfieldTest extends AbstractUITagTest {
         freshTag.setPageContext(pageContext);
         assertFalse("Tag state after doEndTag() under default tag clear state is equal to new Tag with pageContext/parent set.  " +
                 "May indicate that clearTagStateForTagPoolingServers() calls are not working properly.",
-                strutsBodyTagsAreReflectionEqual(tag, freshTag));
+            strutsBodyTagsAreReflectionEqual(tag, freshTag));
     }
 
     public void testSimple_clearTagStateSet() throws Exception {
@@ -284,13 +296,13 @@ public class TextfieldTest extends AbstractUITagTest {
         freshTag.setPageContext(pageContext);
         assertTrue("Tag state after doEndTag() and explicit tag state clearing is inequal to new Tag with pageContext/parent set.  " +
                 "May indicate that clearTagStateForTagPoolingServers() calls are not working properly.",
-                strutsBodyTagsAreReflectionEqual(tag, freshTag));
+            strutsBodyTagsAreReflectionEqual(tag, freshTag));
     }
 
     public void testWW5125() throws Exception {
         TestAction testAction = (TestAction) action;
 
-        for(String fieldName : new String[] {"clone", "size", "clear", "values", "hashCode", "isEmpty", "keySet", "entrySet"}) {
+        for (String fieldName : new String[]{"clone", "size", "clear", "values", "hashCode", "isEmpty", "keySet", "entrySet"}) {
             testAction.addFieldError(fieldName, fieldName + " error");
 
             TextFieldTag tag = new TextFieldTag();
@@ -304,7 +316,7 @@ public class TextfieldTest extends AbstractUITagTest {
             freshTag.setPageContext(pageContext);
             assertFalse("Tag state after doEndTag() under default tag clear state is equal to new Tag with pageContext/parent set.  " +
                     "May indicate that clearTagStateForTagPoolingServers() calls are not working properly.",
-                    strutsBodyTagsAreReflectionEqual(tag, freshTag));
+                strutsBodyTagsAreReflectionEqual(tag, freshTag));
         }
 
         verify(TextFieldTag.class.getResource("Textfield-WW-5125.txt"));
@@ -313,7 +325,7 @@ public class TextfieldTest extends AbstractUITagTest {
     public void testWW5125_clearTagStateSet() throws Exception {
         TestAction testAction = (TestAction) action;
 
-        for(String fieldName : new String[] {"clone", "size", "clear", "values", "hashCode", "isEmpty", "keySet", "entrySet"}) {
+        for (String fieldName : new String[]{"clone", "size", "clear", "values", "hashCode", "isEmpty", "keySet", "entrySet"}) {
             testAction.addFieldError(fieldName, fieldName + " error");
 
             TextFieldTag tag = new TextFieldTag();
@@ -330,7 +342,7 @@ public class TextfieldTest extends AbstractUITagTest {
             freshTag.setPageContext(pageContext);
             assertTrue("Tag state after doEndTag() and explicit tag state clearing is inequal to new Tag with pageContext/parent set.  " +
                     "May indicate that clearTagStateForTagPoolingServers() calls are not working properly.",
-                    strutsBodyTagsAreReflectionEqual(tag, freshTag));
+                strutsBodyTagsAreReflectionEqual(tag, freshTag));
         }
 
         verify(TextFieldTag.class.getResource("Textfield-WW-5125.txt"));
@@ -359,7 +371,7 @@ public class TextfieldTest extends AbstractUITagTest {
         freshTag.setPageContext(pageContext);
         assertFalse("Tag state after doEndTag() under default tag clear state is equal to new Tag with pageContext/parent set.  " +
                 "May indicate that clearTagStateForTagPoolingServers() calls are not working properly.",
-                strutsBodyTagsAreReflectionEqual(tag, freshTag));
+            strutsBodyTagsAreReflectionEqual(tag, freshTag));
     }
 
     public void testSimple_recursionTest_clearTagStateSet() throws Exception {
@@ -388,7 +400,7 @@ public class TextfieldTest extends AbstractUITagTest {
         freshTag.setPageContext(pageContext);
         assertTrue("Tag state after doEndTag() and explicit tag state clearing is inequal to new Tag with pageContext/parent set.  " +
                 "May indicate that clearTagStateForTagPoolingServers() calls are not working properly.",
-                strutsBodyTagsAreReflectionEqual(tag, freshTag));
+            strutsBodyTagsAreReflectionEqual(tag, freshTag));
     }
 
     public void testSimple_recursionTestNoValue() throws Exception {
@@ -411,7 +423,7 @@ public class TextfieldTest extends AbstractUITagTest {
         freshTag.setPageContext(pageContext);
         assertFalse("Tag state after doEndTag() under default tag clear state is equal to new Tag with pageContext/parent set.  " +
                 "May indicate that clearTagStateForTagPoolingServers() calls are not working properly.",
-                strutsBodyTagsAreReflectionEqual(tag, freshTag));
+            strutsBodyTagsAreReflectionEqual(tag, freshTag));
     }
 
     public void testSimple_recursionTestNoValue_clearTagStateSet() throws Exception {
@@ -437,7 +449,7 @@ public class TextfieldTest extends AbstractUITagTest {
         freshTag.setPageContext(pageContext);
         assertTrue("Tag state after doEndTag() and explicit tag state clearing is inequal to new Tag with pageContext/parent set.  " +
                 "May indicate that clearTagStateForTagPoolingServers() calls are not working properly.",
-                strutsBodyTagsAreReflectionEqual(tag, freshTag));
+            strutsBodyTagsAreReflectionEqual(tag, freshTag));
     }
 
     public void testHtml5EmailTag() throws Exception {
@@ -461,7 +473,7 @@ public class TextfieldTest extends AbstractUITagTest {
         freshTag.setPageContext(pageContext);
         assertFalse("Tag state after doEndTag() under default tag clear state is equal to new Tag with pageContext/parent set.  " +
                 "May indicate that clearTagStateForTagPoolingServers() calls are not working properly.",
-                strutsBodyTagsAreReflectionEqual(tag, freshTag));
+            strutsBodyTagsAreReflectionEqual(tag, freshTag));
     }
 
     public void testHtml5EmailTag_clearTagStateSet() throws Exception {
@@ -488,7 +500,7 @@ public class TextfieldTest extends AbstractUITagTest {
         freshTag.setPageContext(pageContext);
         assertTrue("Tag state after doEndTag() and explicit tag state clearing is inequal to new Tag with pageContext/parent set.  " +
                 "May indicate that clearTagStateForTagPoolingServers() calls are not working properly.",
-                strutsBodyTagsAreReflectionEqual(tag, freshTag));
+            strutsBodyTagsAreReflectionEqual(tag, freshTag));
     }
 
     public void testErrorPositionBottom() throws Exception {
@@ -515,7 +527,7 @@ public class TextfieldTest extends AbstractUITagTest {
         freshTag.setPageContext(pageContext);
         assertFalse("Tag state after doEndTag() under default tag clear state is equal to new Tag with pageContext/parent set.  " +
                 "May indicate that clearTagStateForTagPoolingServers() calls are not working properly.",
-                strutsBodyTagsAreReflectionEqual(tag, freshTag));
+            strutsBodyTagsAreReflectionEqual(tag, freshTag));
     }
 
     public void testErrorPositionBottom_clearTagStateSet() throws Exception {
@@ -545,7 +557,7 @@ public class TextfieldTest extends AbstractUITagTest {
         freshTag.setPageContext(pageContext);
         assertTrue("Tag state after doEndTag() and explicit tag state clearing is inequal to new Tag with pageContext/parent set.  " +
                 "May indicate that clearTagStateForTagPoolingServers() calls are not working properly.",
-                strutsBodyTagsAreReflectionEqual(tag, freshTag));
+            strutsBodyTagsAreReflectionEqual(tag, freshTag));
     }
 
     public void testErrorPositionTop() throws Exception {
@@ -572,7 +584,7 @@ public class TextfieldTest extends AbstractUITagTest {
         freshTag.setPageContext(pageContext);
         assertFalse("Tag state after doEndTag() under default tag clear state is equal to new Tag with pageContext/parent set.  " +
                 "May indicate that clearTagStateForTagPoolingServers() calls are not working properly.",
-                strutsBodyTagsAreReflectionEqual(tag, freshTag));
+            strutsBodyTagsAreReflectionEqual(tag, freshTag));
     }
 
     public void testErrorPositionTop_clearTagStateSet() throws Exception {
@@ -602,7 +614,7 @@ public class TextfieldTest extends AbstractUITagTest {
         freshTag.setPageContext(pageContext);
         assertTrue("Tag state after doEndTag() and explicit tag state clearing is inequal to new Tag with pageContext/parent set.  " +
                 "May indicate that clearTagStateForTagPoolingServers() calls are not working properly.",
-                strutsBodyTagsAreReflectionEqual(tag, freshTag));
+            strutsBodyTagsAreReflectionEqual(tag, freshTag));
     }
 
     public void testRequiredLabelPositionDefault() throws Exception {
@@ -627,7 +639,7 @@ public class TextfieldTest extends AbstractUITagTest {
         freshTag.setPageContext(pageContext);
         assertFalse("Tag state after doEndTag() under default tag clear state is equal to new Tag with pageContext/parent set.  " +
                 "May indicate that clearTagStateForTagPoolingServers() calls are not working properly.",
-                strutsBodyTagsAreReflectionEqual(tag, freshTag));
+            strutsBodyTagsAreReflectionEqual(tag, freshTag));
     }
 
     public void testRequiredLabelPositionDefault_clearTagStateSet() throws Exception {
@@ -655,7 +667,7 @@ public class TextfieldTest extends AbstractUITagTest {
         freshTag.setPageContext(pageContext);
         assertTrue("Tag state after doEndTag() and explicit tag state clearing is inequal to new Tag with pageContext/parent set.  " +
                 "May indicate that clearTagStateForTagPoolingServers() calls are not working properly.",
-                strutsBodyTagsAreReflectionEqual(tag, freshTag));
+            strutsBodyTagsAreReflectionEqual(tag, freshTag));
     }
 
     public void testRequiredLabelPositionRight() throws Exception {
@@ -681,7 +693,7 @@ public class TextfieldTest extends AbstractUITagTest {
         freshTag.setPageContext(pageContext);
         assertFalse("Tag state after doEndTag() under default tag clear state is equal to new Tag with pageContext/parent set.  " +
                 "May indicate that clearTagStateForTagPoolingServers() calls are not working properly.",
-                strutsBodyTagsAreReflectionEqual(tag, freshTag));
+            strutsBodyTagsAreReflectionEqual(tag, freshTag));
     }
 
     public void testRequiredLabelPositionRight_clearTagStateSet() throws Exception {
@@ -710,7 +722,7 @@ public class TextfieldTest extends AbstractUITagTest {
         freshTag.setPageContext(pageContext);
         assertTrue("Tag state after doEndTag() and explicit tag state clearing is inequal to new Tag with pageContext/parent set.  " +
                 "May indicate that clearTagStateForTagPoolingServers() calls are not working properly.",
-                strutsBodyTagsAreReflectionEqual(tag, freshTag));
+            strutsBodyTagsAreReflectionEqual(tag, freshTag));
     }
 
     public void testRequiredLabelPositionLeft() throws Exception {
@@ -736,7 +748,7 @@ public class TextfieldTest extends AbstractUITagTest {
         freshTag.setPageContext(pageContext);
         assertFalse("Tag state after doEndTag() under default tag clear state is equal to new Tag with pageContext/parent set.  " +
                 "May indicate that clearTagStateForTagPoolingServers() calls are not working properly.",
-                strutsBodyTagsAreReflectionEqual(tag, freshTag));
+            strutsBodyTagsAreReflectionEqual(tag, freshTag));
     }
 
 
@@ -766,7 +778,7 @@ public class TextfieldTest extends AbstractUITagTest {
         freshTag.setPageContext(pageContext);
         assertTrue("Tag state after doEndTag() and explicit tag state clearing is inequal to new Tag with pageContext/parent set.  " +
                 "May indicate that clearTagStateForTagPoolingServers() calls are not working properly.",
-                strutsBodyTagsAreReflectionEqual(tag, freshTag));
+            strutsBodyTagsAreReflectionEqual(tag, freshTag));
     }
 
     public void testErrorPositionBottomCssXhtmlTheme() throws Exception {
@@ -794,7 +806,7 @@ public class TextfieldTest extends AbstractUITagTest {
         freshTag.setPageContext(pageContext);
         assertFalse("Tag state after doEndTag() under default tag clear state is equal to new Tag with pageContext/parent set.  " +
                 "May indicate that clearTagStateForTagPoolingServers() calls are not working properly.",
-                strutsBodyTagsAreReflectionEqual(tag, freshTag));
+            strutsBodyTagsAreReflectionEqual(tag, freshTag));
     }
 
     public void testErrorPositionBottomCssXhtmlTheme_clearTagStateSet() throws Exception {
@@ -825,7 +837,7 @@ public class TextfieldTest extends AbstractUITagTest {
         freshTag.setPageContext(pageContext);
         assertTrue("Tag state after doEndTag() and explicit tag state clearing is inequal to new Tag with pageContext/parent set.  " +
                 "May indicate that clearTagStateForTagPoolingServers() calls are not working properly.",
-                strutsBodyTagsAreReflectionEqual(tag, freshTag));
+            strutsBodyTagsAreReflectionEqual(tag, freshTag));
     }
 
     public void testErrorPositionTopCssXhtmlTheme() throws Exception {
@@ -853,7 +865,7 @@ public class TextfieldTest extends AbstractUITagTest {
         freshTag.setPageContext(pageContext);
         assertFalse("Tag state after doEndTag() under default tag clear state is equal to new Tag with pageContext/parent set.  " +
                 "May indicate that clearTagStateForTagPoolingServers() calls are not working properly.",
-                strutsBodyTagsAreReflectionEqual(tag, freshTag));
+            strutsBodyTagsAreReflectionEqual(tag, freshTag));
     }
 
     public void testErrorPositionTopCssXhtmlTheme_clearTagStateSet() throws Exception {
@@ -884,7 +896,7 @@ public class TextfieldTest extends AbstractUITagTest {
         freshTag.setPageContext(pageContext);
         assertTrue("Tag state after doEndTag() and explicit tag state clearing is inequal to new Tag with pageContext/parent set.  " +
                 "May indicate that clearTagStateForTagPoolingServers() calls are not working properly.",
-                strutsBodyTagsAreReflectionEqual(tag, freshTag));
+            strutsBodyTagsAreReflectionEqual(tag, freshTag));
     }
 
     public void testNameEvaluation() throws Exception {
@@ -906,7 +918,7 @@ public class TextfieldTest extends AbstractUITagTest {
         freshTag.setPageContext(pageContext);
         assertFalse("Tag state after doEndTag() under default tag clear state is equal to new Tag with pageContext/parent set.  " +
                 "May indicate that clearTagStateForTagPoolingServers() calls are not working properly.",
-                strutsBodyTagsAreReflectionEqual(tag, freshTag));
+            strutsBodyTagsAreReflectionEqual(tag, freshTag));
     }
 
     public void testNameEvaluation_clearTagStateSet() throws Exception {
@@ -931,7 +943,7 @@ public class TextfieldTest extends AbstractUITagTest {
         freshTag.setPageContext(pageContext);
         assertTrue("Tag state after doEndTag() and explicit tag state clearing is inequal to new Tag with pageContext/parent set.  " +
                 "May indicate that clearTagStateForTagPoolingServers() calls are not working properly.",
-                strutsBodyTagsAreReflectionEqual(tag, freshTag));
+            strutsBodyTagsAreReflectionEqual(tag, freshTag));
     }
 
 }

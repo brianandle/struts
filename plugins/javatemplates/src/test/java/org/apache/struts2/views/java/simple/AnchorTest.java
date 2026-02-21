@@ -20,10 +20,12 @@
  */
 package org.apache.struts2.views.java.simple;
 
-import com.opensymphony.xwork2.security.DefaultNotExcludedAcceptedPatternsChecker;
+import org.apache.struts2.security.DefaultNotExcludedAcceptedPatternsChecker;
 import org.apache.struts2.components.Anchor;
 import org.apache.struts2.components.UIBean;
 import org.apache.struts2.components.ServletUrlRenderer;
+import org.apache.struts2.interceptor.csp.CspNonceSource;
+import org.apache.struts2.interceptor.csp.StrutsCspNonceReader;
 
 public class AnchorTest extends AbstractTest {
     private Anchor tag;
@@ -39,7 +41,7 @@ public class AnchorTest extends AbstractTest {
         tag.setHref("http://sometest.com?ab=10");
 
         tag.evaluateParams();
-        map.putAll(tag.getParameters());
+        map.putAll(tag.getAttributes());
         theme.renderTag(getTagName(), context);
         theme.renderTag(getTagName() + "-close", context);
         String output = writer.getBuffer().toString();
@@ -59,7 +61,7 @@ public class AnchorTest extends AbstractTest {
         tag.setHref("http://sometest.com?ab=10");
 
         tag.evaluateParams();
-        map.putAll(tag.getParameters());
+        map.putAll(tag.getAttributes());
         theme.renderTag(getTagName(), context);
         theme.renderTag(getTagName() + "-close", context);
         String output = writer.getBuffer().toString();
@@ -75,7 +77,7 @@ public class AnchorTest extends AbstractTest {
         tag.setEscapeHtmlBody(true);
         tag.evaluateParams();
 
-        map.putAll(tag.getParameters());
+        map.putAll(tag.getAttributes());
         context.getParameters().put("body", s("<i class='i-image'/>"));
 
         theme.renderTag(getTagName(), context);
@@ -93,7 +95,7 @@ public class AnchorTest extends AbstractTest {
         //tag.setEscapeHtmlBody(true);
         tag.evaluateParams();
 
-        map.putAll(tag.getParameters());
+        map.putAll(tag.getAttributes());
         context.getParameters().put("body", s("<i class='i-image'/>"));
 
         theme.renderTag(getTagName(), context);
@@ -111,6 +113,7 @@ public class AnchorTest extends AbstractTest {
         this.tag = new Anchor(stack, request, response);
         this.tag.setUrlRenderer(new ServletUrlRenderer());
         this.tag.setNotExcludedAcceptedPatterns(new DefaultNotExcludedAcceptedPatternsChecker());
+        this.tag.setCspNonceReader(new StrutsCspNonceReader(CspNonceSource.SESSION.name()));
     }
 
     @Override

@@ -18,13 +18,11 @@
  * under the License.
  */
 -->
-
-<#-- 
+<#--
  Code that will add javascript needed for tooltips
 --><#t/>
-<#if (parameters.hasTooltip!false)><#t/>
-	<#lt/><!-- javascript that is needed for tooltips -->
-	<#lt/><script type="text/javascript" src='<@s.url value="${parameters.staticContentPath}/domTT.js" includeParams="none" encode="false" />' <#include "/${parameters.templateDir}/simple/nonce.ftl" /> > </script>
-	<#lt/><link rel="stylesheet" type="text/css" href="<@s.url value="${parameters.staticContentPath}/domTT.css" includeParams="none" encode="false" />" <#include "/${parameters.templateDir}/simple/nonce.ftl" /> />
-	
+<#if (attributes.hasTooltip!false)><#t/>
+    <#lt/><!-- javascript that is needed for tooltips -->
+    <#lt/><@s.script src="${base}${attributes.staticContentPath}/domTT.js" />
+    <#lt/><@s.link rel="stylesheet" type="text/css" href="${base}${attributes.staticContentPath}/domTT.css" />
 </#if><#t/>

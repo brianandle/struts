@@ -21,11 +21,12 @@
 -->
 <!DOCTYPE struts PUBLIC
         "-//Apache Software Foundation//DTD Struts Configuration 6.0//EN"
-        "struts-6.0.dtd">
+        "https://struts.apache.org/dtds/struts-6.0.dtd">
 
 <struts>
 
-    <bean name="struts" class="org.apache.struts2.views.velocity.VelocityManager"/>
+    <bean name="struts" type="org.apache.struts2.views.velocity.VelocityManager"
+          class="org.apache.struts2.views.velocity.StrutsVelocityManager"/>
 
     <bean type="org.apache.struts2.components.template.TemplateEngine" name="vm"
           class="org.apache.struts2.views.velocity.template.VelocityTemplateEngine"/>
@@ -38,7 +39,5 @@
             <result-type name="velocity" class="org.apache.struts2.views.velocity.result.VelocityResult"/>
         </result-types>
     </package>
-
-    <bean-selection name="velocityBeans" class="org.apache.struts2.views.velocity.VelocityBeanSelectionProvider"/>
 
 </struts>

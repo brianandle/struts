@@ -18,10 +18,10 @@
  */
 package org.apache.struts2.views.freemarker;
 
-import com.opensymphony.xwork2.ActionContext;
-import com.opensymphony.xwork2.mock.MockActionInvocation;
-import com.opensymphony.xwork2.util.ClassLoaderUtil;
-import com.opensymphony.xwork2.util.ValueStack;
+import org.apache.struts2.ActionContext;
+import org.apache.struts2.mock.MockActionInvocation;
+import org.apache.struts2.util.ClassLoaderUtil;
+import org.apache.struts2.util.ValueStack;
 import freemarker.template.Configuration;
 import freemarker.template.TemplateExceptionHandler;
 import org.apache.struts2.ServletActionContext;
@@ -32,13 +32,12 @@ import org.apache.struts2.views.jsp.StrutsMockHttpServletResponse;
 import org.easymock.EasyMock;
 import org.springframework.mock.web.MockHttpServletRequest;
 
-import javax.servlet.ServletContext;
+import jakarta.servlet.ServletContext;
 import java.io.File;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.List;
-
 import static org.apache.struts2.views.jsp.AbstractUITagTest.normalize;
 import static org.hamcrest.CoreMatchers.allOf;
 import static org.hamcrest.CoreMatchers.containsString;
@@ -243,7 +242,8 @@ public class FreemarkerResultMockedTest extends StrutsInternalTestCase {
         EasyMock.expect(servletContext.getRealPath("/template/~~~xhtml/dynamic-attributes.ftl")).andReturn(file.getAbsolutePath());
 
         file = new File(ClassLoaderUtil.getResource("template/simple/nonce.ftl", getClass()).toURI());
-        EasyMock.expect(servletContext.getRealPath("/template/simple/nonce.ftl")).andReturn(file.getAbsolutePath());
+        EasyMock.expect(servletContext.getRealPath("/template/xhtml/nonce.ftl")).andReturn(file.getAbsolutePath());
+        EasyMock.expect(servletContext.getRealPath("/template/~~~xhtml/nonce.ftl")).andReturn(file.getAbsolutePath());
 
         file = new File(ClassLoaderUtil.getResource("template/simple/script.ftl", getClass()).toURI());
         EasyMock.expect(servletContext.getRealPath("/template/simple/script.ftl")).andReturn(file.getAbsolutePath());
@@ -259,8 +259,8 @@ public class FreemarkerResultMockedTest extends StrutsInternalTestCase {
         EasyMock.replay(servletContext);
 
         init();
-        // create session
-        request.getSession();
+        // create session and add nonce
+        request.getSession().setAttribute("nonce", "aNonce");
 
         request.setRequestURI("/tutorial/test10.action");
         ActionMapping mapping = container.getInstance(ActionMapper.class).getMapping(request, configurationManager);

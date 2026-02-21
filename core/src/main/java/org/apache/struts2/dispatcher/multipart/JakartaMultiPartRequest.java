@@ -18,316 +18,350 @@
  */
 package org.apache.struts2.dispatcher.multipart;
 
-import org.apache.commons.fileupload.FileItem;
-import org.apache.commons.fileupload.FileUploadBase;
-import org.apache.commons.fileupload.FileUploadException;
-import org.apache.commons.fileupload.RequestContext;
-import org.apache.commons.fileupload.disk.DiskFileItem;
-import org.apache.commons.fileupload.disk.DiskFileItemFactory;
-import org.apache.commons.fileupload.servlet.ServletFileUpload;
+import jakarta.servlet.http.HttpServletRequest;
+import org.apache.commons.fileupload2.core.DiskFileItem;
+import org.apache.commons.fileupload2.core.RequestContext;
+import org.apache.commons.fileupload2.jakarta.servlet6.JakartaServletDiskFileUpload;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.struts2.dispatcher.LocalizedMessage;
 
-import javax.servlet.http.HttpServletRequest;
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.UnsupportedEncodingException;
-import java.util.*;
+import java.nio.charset.Charset;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
+
+import static org.apache.commons.lang3.StringUtils.normalizeSpace;
 
 /**
- * Multipart form data request adapter for Jakarta Commons Fileupload package.
+ * Multipart form data request adapter for Jakarta Commons FileUpload package.
+ * 
+ * <p>This implementation provides secure handling of multipart requests with proper
+ * resource management and cleanup. It tracks all temporary files created during
+ * the upload process and ensures they are properly cleaned up to prevent
+ * resource leaks and security vulnerabilities.</p>
+ * 
+ * <p>Key features:</p>
+ * <ul>
+ *   <li>Automatic tracking and cleanup of temporary files</li>
+ *   <li>Proper error handling with user-friendly error messages</li>
+ *   <li>Support for both in-memory and disk-based file uploads</li>
+ *   <li>Extensible cleanup mechanisms for customization</li>
+ * </ul>
+ * 
+ * <p>Usage example:</p>
+ * <pre>
+ * JakartaMultiPartRequest multipartRequest = new JakartaMultiPartRequest();
+ * try {
+ *     multipartRequest.parse(request, "/tmp/uploads");
+ *     // Process uploaded files
+ *     for (String fieldName : multipartRequest.getFileParameterNames()) {
+ *         List&lt;UploadedFile&gt; files = multipartRequest.getFile(fieldName);
+ *         // Handle files
+ *     }
+ * } finally {
+ *     multipartRequest.cleanUp(); // Always clean up resources
+ * }
+ * </pre>
+ * 
+ * @see AbstractMultiPartRequest
+ * @see org.apache.commons.fileupload2.jakarta.servlet6.JakartaServletDiskFileUpload
  */
 public class JakartaMultiPartRequest extends AbstractMultiPartRequest {
 
-    static final Logger LOG = LogManager.getLogger(JakartaMultiPartRequest.class);
-
-    // maps parameter name -> List of FileItem objects
-    protected Map<String, List<FileItem>> files = new HashMap<>();
-
-    // maps parameter name -> List of param values
-    protected Map<String, List<String>> params = new HashMap<>();
+    private static final Logger LOG = LogManager.getLogger(JakartaMultiPartRequest.class);
 
     /**
-     * Creates a new request wrapper to handle multi-part data using methods adapted from Jason Pell's
-     * multipart classes (see class description).
-     *
-     * @param saveDir the directory to save off the file
-     * @param request the request containing the multipart
-     * @throws java.io.IOException is thrown if encoding fails.
+     * List to track all DiskFileItem instances for proper cleanup
      */
-    public void parse(HttpServletRequest request, String saveDir) throws IOException {
-        try {
-            setLocale(request);
-            processUpload(request, saveDir);
-        } catch (FileUploadException e) {
-            LOG.warn("Request exceeded size limit!", e);
-            LocalizedMessage errorMessage;
-            if(e instanceof FileUploadBase.SizeLimitExceededException) {
-                FileUploadBase.SizeLimitExceededException ex = (FileUploadBase.SizeLimitExceededException) e;
-                errorMessage = buildErrorMessage(e, new Object[]{ex.getPermittedSize(), ex.getActualSize()});
+    private final List<DiskFileItem> diskFileItems = new ArrayList<>();
+    
+    /**
+     * List to track temporary files created for in-memory uploads
+     */
+    private final List<File> temporaryFiles = new ArrayList<>();
+
+    /**
+     * Processes the multipart upload request using Jakarta Commons FileUpload.
+     * 
+     * <p>This method handles the core upload processing by:</p>
+     * <ol>
+     *   <li>Reading the character encoding from the request</li>
+     *   <li>Preparing the Jakarta servlet file upload handler</li>
+     *   <li>Creating a request context for processing</li>
+     *   <li>Iterating through all form items (fields and files)</li>
+     *   <li>Processing each item appropriately based on its type</li>
+     * </ol>
+     * 
+     * <p>All {@link org.apache.commons.fileupload2.core.DiskFileItem} instances
+     * are automatically tracked for proper cleanup.</p>
+     * 
+     * @param request the HTTP servlet request containing the multipart data
+     * @param saveDir the directory where uploaded files will be stored
+     * @throws IOException if an error occurs during upload processing
+     * @see #processNormalFormField(DiskFileItem, Charset)
+     * @see #processFileField(DiskFileItem, String)
+     */
+    @Override
+    protected void processUpload(HttpServletRequest request, String saveDir) throws IOException {
+        Charset charset = readCharsetEncoding(request);
+
+        JakartaServletDiskFileUpload servletFileUpload =
+                prepareServletFileUpload(charset, Path.of(saveDir));
+
+        RequestContext requestContext = createRequestContext(request);
+        
+        for (DiskFileItem item : servletFileUpload.parseRequest(requestContext)) {
+            // Track all DiskFileItem instances for cleanup - this is critical for security
+            // as it ensures temporary files are properly cleaned up even if processing fails
+            diskFileItems.add(item);
+
+            LOG.debug(() -> "Processing a form field: " + normalizeSpace(item.getFieldName()));
+            if (item.isFormField()) {
+                // Process regular form fields (text inputs, checkboxes, etc.)
+                processNormalFormField(item, charset);
             } else {
-                errorMessage = buildErrorMessage(e, new Object[]{});
-            }
-
-            if (!errors.contains(errorMessage)) {
-                errors.add(errorMessage);
-            }
-        } catch (Exception e) {
-            LOG.warn("Unable to parse request", e);
-            LocalizedMessage errorMessage = buildErrorMessage(e, new Object[]{});
-            if (!errors.contains(errorMessage)) {
-                errors.add(errorMessage);
+                // Process file upload fields
+                LOG.debug(() -> "Processing a file: " + normalizeSpace(item.getFieldName()));
+                processFileField(item, saveDir);
             }
         }
     }
 
-    protected void processUpload(HttpServletRequest request, String saveDir) throws FileUploadException, UnsupportedEncodingException {
-        if (ServletFileUpload.isMultipartContent(request)) {
-            for (FileItem item : parseRequest(request, saveDir)) {
-                LOG.debug("Found file item: [{}]", item.getFieldName());
-                if (item.isFormField()) {
-                    processNormalFormField(item, request.getCharacterEncoding());
-                } else {
-                    processFileField(item);
-                }
-            }
+    /**
+     * Processes a normal form field (non-file) from the multipart request.
+     * 
+     * <p>This method handles text form fields by:</p>
+     * <ol>
+     *   <li>Validating the field name is not null</li>
+     *   <li>Extracting the field value using the specified charset</li>
+     *   <li>Checking if the field value exceeds maximum string length</li>
+     *   <li>Adding the value to the parameters map</li>
+     * </ol>
+     * 
+     * <p>Fields with null names are skipped with a warning log message.</p>
+     * <p>Empty form fields are stored as empty strings.</p>
+     * 
+     * @param item the disk file item representing the form field
+     * @param charset the character set to use for decoding the field value
+     * @throws IOException if an error occurs reading the field value
+     * @see #exceedsMaxStringLength(String, String)
+     */
+    protected void processNormalFormField(DiskFileItem item, Charset charset) throws IOException {
+        LOG.debug("Item: {} is a normal form field", normalizeSpace(item.getName()));
+
+        String fieldName = item.getFieldName();
+        if (fieldName == null) {
+            LOG.warn("Form field has null fieldName, skipping");
+            return;
         }
+        
+        List<String> values = parameters.computeIfAbsent(fieldName, k -> new ArrayList<>());
+
+        String fieldValue = item.getString(charset);
+        if (exceedsMaxStringLength(fieldName, fieldValue)) {
+            return;
+        }
+        if (item.getSize() == 0) {
+            values.add(StringUtils.EMPTY);
+        } else {
+            values.add(fieldValue);
+        }
+        parameters.put(fieldName, values);
     }
 
-    protected void processFileField(FileItem item) {
-        LOG.debug("Item is a file upload");
-
+    /**
+     * Processes a file field from the multipart request.
+     * 
+     * <p>This method handles file uploads by:</p>
+     * <ol>
+     *   <li>Validating the file name and field name are not null/empty</li>
+     *   <li>Determining if the file is stored in memory or on disk</li>
+     *   <li>For in-memory files: creating a temporary file and copying content</li>
+     *   <li>For disk files: using the existing file directly</li>
+     *   <li>Creating an {@link UploadedFile} abstraction</li>
+     *   <li>Adding the file to the uploaded files collection</li>
+     * </ol>
+     * 
+     * <p>Temporary files created for in-memory uploads are automatically
+     * tracked for cleanup. Any errors during temporary file creation are
+     * logged and added to the error list for user feedback.</p>
+     * 
+     * @param item the disk file item representing the uploaded file
+     * @see #cleanUpTemporaryFiles()
+     */
+    protected void processFileField(DiskFileItem item, String saveDir) {
         // Skip file uploads that don't have a file name - meaning that no file was selected.
-        if (item.getName() == null || item.getName().trim().length() < 1) {
-            LOG.debug("No file has been uploaded for the field: {}", item.getFieldName());
+        if (item.getName() == null || item.getName().trim().isEmpty()) {
+            LOG.debug(() -> "No file has been uploaded for the field: " + normalizeSpace(item.getFieldName()));
             return;
         }
 
-        List<FileItem> values;
-        if (files.get(item.getFieldName()) != null) {
-            values = files.get(item.getFieldName());
-        } else {
-            values = new ArrayList<>();
+        String fieldName = item.getFieldName();
+        if (fieldName == null) {
+            LOG.warn("File field has null fieldName, skipping");
+            return;
         }
-
-        values.add(item);
-        files.put(item.getFieldName(), values);
-    }
-
-    protected void processNormalFormField(FileItem item, String charset) throws UnsupportedEncodingException {
-        LOG.debug("Item is a normal form field");
-
-        List<String> values;
-        if (params.get(item.getFieldName()) != null) {
-            values = params.get(item.getFieldName());
-        } else {
-            values = new ArrayList<>();
+        
+        // Reject empty files (0 bytes) as they are not considered valid uploads
+        if (rejectEmptyFile(item.getSize(), item.getName(), fieldName)) {
+            return;
         }
+        
+        List<UploadedFile> values = uploadedFiles.computeIfAbsent(fieldName, k -> new ArrayList<>());
 
-        if (item.getSize() == 0) {
-            values.add(StringUtils.EMPTY);
-        } else if (charset != null) {
-            values.add(item.getString(charset));
-        } else {
-            // note: see https://issues.apache.org/jira/browse/WW-633
-            // basically, in some cases the charset may be null, so
-            // we're just going to try to "other" method (no idea if this
-            // will work)
-            values.add(item.getString());
-        }
-        params.put(item.getFieldName(), values);
-        item.delete();
-    }
+        if (item.isInMemory()) {
+            LOG.debug(() -> "Creating temporary file representing in-memory uploaded item: " + normalizeSpace(item.getFieldName()));
+            try {
+                File tempFile = createTemporaryFile(item.getName(), Path.of(saveDir));
+                
+                // Track the temporary file for explicit cleanup
+                temporaryFiles.add(tempFile);
 
-    protected List<FileItem> parseRequest(HttpServletRequest servletRequest, String saveDir) throws FileUploadException {
-        DiskFileItemFactory fac = createDiskFileItemFactory(saveDir);
-        ServletFileUpload upload = createServletFileUpload(fac);
-        return upload.parseRequest(createRequestContext(servletRequest));
-    }
+                // Write the in-memory content to the temporary file
+                try (java.io.FileOutputStream fos = new java.io.FileOutputStream(tempFile)) {
+                    fos.write(item.get());
+                }
 
-    protected ServletFileUpload createServletFileUpload(DiskFileItemFactory fac) {
-        ServletFileUpload upload = new ServletFileUpload(fac);
-        upload.setSizeMax(maxSize);
-        return upload;
-    }
+                UploadedFile uploadedFile = StrutsUploadedFile.Builder
+                        .create(tempFile)
+                        .withOriginalName(item.getName())
+                        .withContentType(item.getContentType())
+                        .withInputName(item.getFieldName())
+                        .build();
+                values.add(uploadedFile);
 
-    protected DiskFileItemFactory createDiskFileItemFactory(String saveDir) {
-        DiskFileItemFactory fac = new DiskFileItemFactory();
-        // Make sure that the data is written to file, even if the file is empty.
-        fac.setSizeThreshold(-1);
-        if (saveDir != null) {
-            fac.setRepository(new File(saveDir));
-        }
-        return fac;
-    }
-
-    /* (non-Javadoc)
-     * @see org.apache.struts2.dispatcher.multipart.MultiPartRequest#getFileParameterNames()
-     */
-    public Enumeration<String> getFileParameterNames() {
-        return Collections.enumeration(files.keySet());
-    }
-
-    /* (non-Javadoc)
-     * @see org.apache.struts2.dispatcher.multipart.MultiPartRequest#getContentType(java.lang.String)
-     */
-    public String[] getContentType(String fieldName) {
-        List<FileItem> items = files.get(fieldName);
-
-        if (items == null) {
-            return null;
-        }
-
-        List<String> contentTypes = new ArrayList<>(items.size());
-        for (FileItem fileItem : items) {
-            contentTypes.add(fileItem.getContentType());
-        }
-
-        return contentTypes.toArray(new String[contentTypes.size()]);
-    }
-
-    /* (non-Javadoc)
-     * @see org.apache.struts2.dispatcher.multipart.MultiPartRequest#getFile(java.lang.String)
-     */
-    public UploadedFile[] getFile(String fieldName) {
-        List<FileItem> items = files.get(fieldName);
-
-        if (items == null) {
-            return null;
-        }
-
-        List<UploadedFile> fileList = new ArrayList<>(items.size());
-        for (FileItem fileItem : items) {
-            DiskFileItem diskFileItem = (DiskFileItem) fileItem;
-            File storeLocation = diskFileItem.getStoreLocation();
-
-            // Ensure file exists even if it is empty.
-            if (diskFileItem.getSize() == 0 && storeLocation != null && !storeLocation.exists()) {
-                try {
-                    storeLocation.createNewFile();
-                } catch (IOException e) {
-                    LOG.error("Cannot write uploaded empty file to disk: {}", storeLocation.getAbsolutePath(), e);
+                if (LOG.isDebugEnabled()) {
+                    LOG.debug("Created temporary file for in-memory uploaded item: {} at {}",
+                             normalizeSpace(item.getName()), tempFile.getAbsolutePath());
+                }
+            } catch (IOException e) {
+                LOG.warn("Failed to create temporary file for in-memory uploaded item: {}",
+                        normalizeSpace(item.getName()), e);
+                
+                // Add the error to the errors list for proper user feedback
+                LocalizedMessage errorMessage = buildErrorMessage(e.getClass(), e.getMessage(), new Object[]{item.getName()});
+                if (!errors.contains(errorMessage)) {
+                    errors.add(errorMessage);
                 }
             }
-            fileList.add(new StrutsUploadedFile(storeLocation));
+        } else {
+            UploadedFile uploadedFile = StrutsUploadedFile.Builder
+                    .create(item.getPath().toFile())
+                    .withOriginalName(item.getName())
+                    .withContentType(item.getContentType())
+                    .withInputName(item.getFieldName())
+                    .build();
+            values.add(uploadedFile);
         }
 
-        return fileList.toArray(new UploadedFile[fileList.size()]);
-    }
-
-    /* (non-Javadoc)
-     * @see org.apache.struts2.dispatcher.multipart.MultiPartRequest#getFileNames(java.lang.String)
-     */
-    public String[] getFileNames(String fieldName) {
-        List<FileItem> items = files.get(fieldName);
-
-        if (items == null) {
-            return null;
-        }
-
-        List<String> fileNames = new ArrayList<>(items.size());
-        for (FileItem fileItem : items) {
-            fileNames.add(getCanonicalName(fileItem.getName()));
-        }
-
-        return fileNames.toArray(new String[fileNames.size()]);
-    }
-
-    /* (non-Javadoc)
-     * @see org.apache.struts2.dispatcher.multipart.MultiPartRequest#getFilesystemName(java.lang.String)
-     */
-    public String[] getFilesystemName(String fieldName) {
-        List<FileItem> items = files.get(fieldName);
-
-        if (items == null) {
-            return null;
-        }
-
-        List<String> fileNames = new ArrayList<>(items.size());
-        for (FileItem fileItem : items) {
-            fileNames.add(((DiskFileItem) fileItem).getStoreLocation().getName());
-        }
-
-        return fileNames.toArray(new String[fileNames.size()]);
-    }
-
-    /* (non-Javadoc)
-     * @see org.apache.struts2.dispatcher.multipart.MultiPartRequest#getParameter(java.lang.String)
-     */
-    public String getParameter(String name) {
-        List<String> v = params.get(name);
-        if (v != null && v.size() > 0) {
-            return v.get(0);
-        }
-
-        return null;
-    }
-
-    /* (non-Javadoc)
-     * @see org.apache.struts2.dispatcher.multipart.MultiPartRequest#getParameterNames()
-     */
-    public Enumeration<String> getParameterNames() {
-        return Collections.enumeration(params.keySet());
-    }
-
-    /* (non-Javadoc)
-     * @see org.apache.struts2.dispatcher.multipart.MultiPartRequest#getParameterValues(java.lang.String)
-     */
-    public String[] getParameterValues(String name) {
-        List<String> v = params.get(name);
-        if (v != null && v.size() > 0) {
-            return v.toArray(new String[v.size()]);
-        }
-
-        return null;
+        uploadedFiles.put(fieldName, values);
     }
 
     /**
-     * Creates a RequestContext needed by Jakarta Commons Upload.
-     *
-     * @param req the request.
-     * @return a new request context.
+     * Cleans up disk file items by deleting associated temporary files.
+     * 
+     * <p>This method iterates through all tracked {@link DiskFileItem} instances
+     * and performs cleanup operations:</p>
+     * <ul>
+     *   <li>For in-memory items: logs cleanup (no files to delete)</li>
+     *   <li>For disk items: deletes the associated temporary file</li>
+     * </ul>
+     * 
+     * <p>This method is called automatically during {@link #cleanUp()} but can
+     * be overridden by subclasses to customize cleanup behavior. All exceptions
+     * are caught and logged to prevent cleanup failures from affecting the
+     * overall cleanup process.</p>
+     * 
+     * @see #cleanUp()
+     * @see #cleanUpTemporaryFiles()
      */
-    protected RequestContext createRequestContext(final HttpServletRequest req) {
-        return new RequestContext() {
-            public String getCharacterEncoding() {
-                return req.getCharacterEncoding();
-            }
-
-            public String getContentType() {
-                return req.getContentType();
-            }
-
-            public int getContentLength() {
-                return req.getContentLength();
-            }
-
-            public InputStream getInputStream() throws IOException {
-                InputStream in = req.getInputStream();
-                if (in == null) {
-                    throw new IOException("Missing content in the request");
+    protected void cleanUpDiskFileItems() {
+        LOG.debug("Clean up all DiskFileItem instances (both form fields and file uploads");
+        for (DiskFileItem item : diskFileItems) {
+            try {
+                if (item.isInMemory()) {
+                    LOG.debug(() -> "Cleaning up in-memory item: " + normalizeSpace(item.getFieldName()));
+                } else {
+                    Path itemPath = item.getPath();
+                    if (LOG.isDebugEnabled()) {
+                        LOG.debug("Cleaning up disk item: {} at {}", normalizeSpace(item.getFieldName()), itemPath);
+                    }
+                    deleteFile(itemPath);
                 }
-                return req.getInputStream();
+            } catch (Exception e) {
+                LOG.warn("Error cleaning up DiskFileItem: {}", normalizeSpace(item.getFieldName()), e);
             }
-        };
+        }
     }
 
-    /* (non-Javadoc)
-    * @see org.apache.struts2.dispatcher.multipart.MultiPartRequest#cleanUp()
-    */
+    /**
+     * Cleans up temporary files created for in-memory uploads.
+     * 
+     * <p>This method deletes all temporary files that were created when
+     * processing in-memory uploads. These files are created in
+     * {@link #processFileField(DiskFileItem, String)} when an uploaded file is
+     * stored in memory and needs to be written to disk.</p>
+     * 
+     * <p>The cleanup process:</p>
+     * <ol>
+     *   <li>Iterates through all tracked temporary files</li>
+     *   <li>Checks if each file still exists</li>
+     *   <li>Attempts to delete existing files</li>
+     *   <li>Logs warnings for files that cannot be deleted</li>
+     * </ol>
+     * 
+     * <p>This method can be overridden by subclasses to customize cleanup
+     * behavior. All exceptions are caught and logged to ensure cleanup
+     * continues even if individual file deletions fail.</p>
+     * 
+     * @see #cleanUp()
+     * @see #cleanUpDiskFileItems()
+     */
+    protected void cleanUpTemporaryFiles() {
+        LOG.debug("Cleaning up {} temporary files created for in-memory uploads", temporaryFiles.size());
+        for (File tempFile : temporaryFiles) {
+            deleteFile(tempFile.toPath());
+        }
+    }
+
+    /**
+     * Performs complete cleanup of all resources associated with this request.
+     * 
+     * <p>This method extends the parent cleanup functionality to ensure proper
+     * cleanup of Jakarta-specific resources:</p>
+     * <ol>
+     *   <li>Calls parent cleanup to handle base class resources</li>
+     *   <li>Cleans up all tracked {@link DiskFileItem} instances</li>
+     *   <li>Cleans up all temporary files created for in-memory uploads</li>
+     *   <li>Clears internal tracking collections</li>
+     * </ol>
+     * 
+     * <p>This method is designed to be safe to call multiple times and will
+     * not throw exceptions even if cleanup operations fail. All errors are
+     * logged for debugging purposes.</p>
+     * 
+     * <p><strong>Important:</strong> This method should always be called in a
+     * finally block to ensure resources are properly released, even if
+     * exceptions occur during request processing.</p>
+     * 
+     * @see #cleanUpDiskFileItems()
+     * @see #cleanUpTemporaryFiles()
+     * @see AbstractMultiPartRequest#cleanUp()
+     */
+    @Override
     public void cleanUp() {
-        Set<String> names = files.keySet();
-        for (String name : names) {
-            List<FileItem> items = files.get(name);
-            for (FileItem item : items) {
-                LOG.debug("Removing file {} {}", name, item );
-                if (!item.isInMemory()) {
-                    item.delete();
-                }
-            }
+        super.cleanUp();
+        try {
+            cleanUpDiskFileItems();
+            cleanUpTemporaryFiles();
+        } finally {
+            diskFileItems.clear();
+            temporaryFiles.clear();
         }
     }
 

@@ -18,21 +18,16 @@
  */
 package org.apache.struts2.views.java.simple;
 
-import com.opensymphony.xwork2.ActionContext;
-import com.opensymphony.xwork2.security.DefaultNotExcludedAcceptedPatternsChecker;
+import org.apache.struts2.security.DefaultNotExcludedAcceptedPatternsChecker;
 import org.apache.struts2.components.Script;
 import org.apache.struts2.components.UIBean;
-
-
-import java.util.HashMap;
-import java.util.Map;
+import org.apache.struts2.interceptor.csp.CspNonceSource;
+import org.apache.struts2.interceptor.csp.StrutsCspNonceReader;
 
 
 public class ScriptTest extends AbstractTest {
 
     private Script tag;
-
-    private static final String NONCE_VAL = "r4andom";
 
     public void testRenderScriptTag() {
         tag.setName("name_");
@@ -47,7 +42,7 @@ public class ScriptTest extends AbstractTest {
         tag.setCrossorigin("test");
 
         tag.evaluateParams();
-        map.putAll(tag.getParameters());
+        map.putAll(tag.getAttributes());
         theme.renderTag(getTagName(), context);
         String output = writer.getBuffer().toString();
 
@@ -77,12 +72,8 @@ public class ScriptTest extends AbstractTest {
     protected void setUp() throws Exception {
         super.setUp();
 
-        ActionContext actionContext = stack.getActionContext();
-        Map<String, Object> session = new HashMap<>();
-        session.put("nonce", NONCE_VAL);
-        actionContext.withSession(session);
-
         this.tag = new Script(stack, request, response);
         tag.setNotExcludedAcceptedPatterns(new DefaultNotExcludedAcceptedPatternsChecker());
+        this.tag.setCspNonceReader(new StrutsCspNonceReader(CspNonceSource.SESSION.name()));
     }
 }

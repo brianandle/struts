@@ -18,13 +18,15 @@
  */
 package org.apache.struts2.config_browser;
 
-import com.opensymphony.xwork2.inject.Inject;
-import org.apache.logging.log4j.Logger;
+import org.apache.struts2.inject.Inject;
+import org.apache.struts2.util.reflection.ReflectionContextFactory;
+import org.apache.struts2.util.reflection.ReflectionException;
+import org.apache.struts2.util.reflection.ReflectionProvider;
+import org.apache.struts2.validator.Validator;
 import org.apache.logging.log4j.LogManager;
-import com.opensymphony.xwork2.util.reflection.ReflectionContextFactory;
-import com.opensymphony.xwork2.util.reflection.ReflectionException;
-import com.opensymphony.xwork2.util.reflection.ReflectionProvider;
-import com.opensymphony.xwork2.validator.Validator;
+import org.apache.logging.log4j.Logger;
+import org.apache.struts2.ActionContext;
+import org.apache.struts2.interceptor.parameter.StrutsParameter;
 
 import java.beans.BeanInfo;
 import java.beans.IntrospectionException;
@@ -32,6 +34,7 @@ import java.beans.Introspector;
 import java.beans.PropertyDescriptor;
 import java.util.Collections;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.TreeSet;
 
@@ -42,28 +45,23 @@ import java.util.TreeSet;
 public class ShowValidatorAction extends ListValidatorsAction {
     private static final long serialVersionUID = 4061534149317835177L;
 
-    private static Logger LOG = LogManager.getLogger(ShowValidatorAction.class);
+    private static final Logger LOG = LogManager.getLogger(ShowValidatorAction.class);
 
     private Set<PropertyInfo> properties = Collections.emptySet();
     private int selected = 0;
-    
-    ReflectionProvider reflectionProvider;
-    ReflectionContextFactory reflectionContextFactory;
+
+    private ReflectionProvider reflectionProvider;
 
     @Inject
     public void setReflectionProvider(ReflectionProvider prov) {
         this.reflectionProvider = prov;
     }
-    
-    @Inject
-    public void setReflectionContextFactory(ReflectionContextFactory fac) {
-        this.reflectionContextFactory = fac;
-    }
-    
+
     public int getSelected() {
         return selected;
     }
 
+    @StrutsParameter
     public void setSelected(int selected) {
         this.selected = selected;
     }
@@ -76,12 +74,12 @@ public class ShowValidatorAction extends ListValidatorsAction {
         return validators.get(selected);
     }
 
+    @Override
     public String execute() throws Exception {
         loadValidators();
         Validator validator = getSelectedValidator();
-        properties = new TreeSet<PropertyInfo>();
+        properties = new TreeSet<>();
         try {
-            Map<String, Object> context = reflectionContextFactory.createDefaultContext(validator);
             BeanInfo beanInfoFrom;
             try {
                 beanInfoFrom = Introspector.getBeanInfo(validator.getClass(), Object.class);
@@ -93,6 +91,7 @@ public class ShowValidatorAction extends ListValidatorsAction {
 
             PropertyDescriptor[] pds = beanInfoFrom.getPropertyDescriptors();
 
+            Map<String, Object> context = ActionContext.getContext().getContextMap();
             for (PropertyDescriptor pd : pds) {
                 String name = pd.getName();
                 Object value = null;
@@ -109,9 +108,9 @@ public class ShowValidatorAction extends ListValidatorsAction {
             }
         } catch (Exception e) {
             if (LOG.isWarnEnabled()) {
-        	LOG.warn("Unable to retrieve properties.", e);
+                LOG.warn("Unable to retrieve properties.", e);
             }
-            addActionError("Unable to retrieve properties: " + e.toString());
+            addActionError("Unable to retrieve properties: " + e);
         }
 
         if (hasErrors()) {
@@ -162,6 +161,7 @@ public class ShowValidatorAction extends ListValidatorsAction {
             this.name = name;
         }
 
+        @Override
         public boolean equals(Object o) {
             if (this == o) return true;
             if (!(o instanceof PropertyInfo)) return false;
@@ -170,11 +170,11 @@ public class ShowValidatorAction extends ListValidatorsAction {
 
             if (!name.equals(propertyInfo.name)) return false;
             if (!type.equals(propertyInfo.type)) return false;
-            if (value != null ? !value.equals(propertyInfo.value) : propertyInfo.value != null) return false;
 
-            return true;
+            return Objects.equals(value, propertyInfo.value);
         }
 
+        @Override
         public int hashCode() {
             int result;
             result = name.hashCode();
@@ -183,6 +183,7 @@ public class ShowValidatorAction extends ListValidatorsAction {
             return result;
         }
 
+        @Override
         public int compareTo(Object o) {
             PropertyInfo other = (PropertyInfo) o;
             return this.name.compareTo(other.name);

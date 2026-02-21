@@ -18,37 +18,39 @@
  */
 package org.apache.struts2.interceptor;
 
-import com.opensymphony.xwork2.Action;
-import com.opensymphony.xwork2.ActionContext;
-import com.opensymphony.xwork2.ActionProxy;
-import com.opensymphony.xwork2.ActionProxyFactory;
-import com.opensymphony.xwork2.DefaultActionProxyFactory;
-import com.opensymphony.xwork2.ObjectFactory;
-import com.opensymphony.xwork2.config.Configuration;
-import com.opensymphony.xwork2.config.ConfigurationException;
-import com.opensymphony.xwork2.config.ConfigurationProvider;
-import com.opensymphony.xwork2.config.entities.ActionConfig;
-import com.opensymphony.xwork2.config.entities.InterceptorMapping;
-import com.opensymphony.xwork2.config.entities.PackageConfig;
-import com.opensymphony.xwork2.config.entities.ResultConfig;
-import com.opensymphony.xwork2.inject.ContainerBuilder;
-import com.opensymphony.xwork2.interceptor.ParametersInterceptor;
-import com.opensymphony.xwork2.mock.MockResult;
-import com.opensymphony.xwork2.ognl.OgnlUtil;
-import com.opensymphony.xwork2.util.location.LocatableProperties;
-import org.apache.struts2.ServletActionContext;
+import org.apache.struts2.action.Action;
+import org.apache.struts2.ActionContext;
+import org.apache.struts2.ActionProxy;
+import org.apache.struts2.ActionProxyFactory;
+import org.apache.struts2.DefaultActionProxyFactory;
+import org.apache.struts2.ObjectFactory;
+import org.apache.struts2.config.Configuration;
+import org.apache.struts2.config.ConfigurationException;
+import org.apache.struts2.config.ConfigurationProvider;
+import org.apache.struts2.config.entities.ActionConfig;
+import org.apache.struts2.config.entities.InterceptorMapping;
+import org.apache.struts2.config.entities.PackageConfig;
+import org.apache.struts2.config.entities.ResultConfig;
+import org.apache.struts2.inject.ContainerBuilder;
+import org.apache.struts2.mock.MockResult;
+import org.apache.struts2.ognl.OgnlUtil;
+import org.apache.struts2.util.location.LocatableProperties;
+import jakarta.servlet.http.HttpSession;
 import org.apache.struts2.StrutsInternalTestCase;
 import org.apache.struts2.dispatcher.HttpParameters;
+import org.apache.struts2.interceptor.exec.ExecutorProvider;
+import org.apache.struts2.interceptor.parameter.ParametersInterceptor;
 import org.apache.struts2.views.jsp.StrutsMockHttpServletRequest;
 import org.apache.struts2.views.jsp.StrutsMockHttpSession;
 
-import javax.servlet.http.HttpSession;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 /**
  * Test case for ExecuteAndWaitInterceptor.
@@ -66,6 +68,20 @@ public class ExecuteAndWaitInterceptorTest extends StrutsInternalTestCase {
     public void testOneWait() throws Exception {
         waitInterceptor.setDelay(0);
         waitInterceptor.setDelaySleepInterval(0);
+
+        ActionProxy proxy = buildProxy("action1");
+        String result = proxy.execute();
+        assertEquals("wait", result);
+
+        Thread.sleep(1000);
+
+        ActionProxy proxy2 = buildProxy("action1");
+        String result2 = proxy2.execute();
+        assertEquals("success", result2);
+    }
+
+    public void testExecutorProvider() throws Exception {
+        waitInterceptor.setExecutorProvider(new TestExecutorProvider());
 
         ActionProxy proxy = buildProxy("action1");
         String result = proxy.execute();
@@ -226,7 +242,11 @@ public class ExecuteAndWaitInterceptorTest extends StrutsInternalTestCase {
             .withServletRequest(request)
             .getContextMap();
 
+        container.inject(waitInterceptor);
         container.inject(parametersInterceptor);
+
+        waitInterceptor.init();
+        parametersInterceptor.init();
     }
 
     protected void tearDown() throws Exception {
@@ -250,8 +270,6 @@ public class ExecuteAndWaitInterceptorTest extends StrutsInternalTestCase {
         }
 
         public void loadPackages() throws ConfigurationException {
-
-
             // interceptors
             waitInterceptor = new ExecuteAndWaitInterceptor();
             parametersInterceptor = new ParametersInterceptor();
@@ -273,5 +291,27 @@ public class ExecuteAndWaitInterceptorTest extends StrutsInternalTestCase {
         }
 
     }
+
 }
+
+class TestExecutorProvider implements ExecutorProvider {
+
+    private final ExecutorService executor = Executors.newSingleThreadExecutor();
+
+    @Override
+    public void execute(Runnable task) {
+        executor.execute(task);
+    }
+
+    @Override
+    public boolean isShutdown() {
+        return executor.isShutdown();
+    }
+
+    @Override
+    public void shutdown() {
+        executor.shutdown();
+    }
+}
+
 

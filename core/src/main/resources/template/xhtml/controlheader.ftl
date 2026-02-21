@@ -18,11 +18,11 @@
  * under the License.
  */
 -->
-<#include "/${parameters.templateDir}/${parameters.expandTheme}/controlheader-core.ftl" />
-    <td 
-        <#if parameters.align?? >
-            class="align-${parameters.align}"
-         <#else >
-            class="tdInput"            
-        </#if>
+<#include "/${attributes.templateDir}/${attributes.expandTheme}/controlheader-core.ftl" />
+    <td<#rt/>
+<#if attributes.align?? >
+ class="align-${attributes.align}"<#rt/>
+<#else >
+ class="tdInput"<#rt/>
+</#if>
 ><#t/>

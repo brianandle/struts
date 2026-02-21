@@ -22,6 +22,8 @@ package org.apache.struts2.views.java.simple;
 
 import org.apache.struts2.components.TextField;
 import org.apache.struts2.components.UIBean;
+import org.apache.struts2.interceptor.csp.CspNonceSource;
+import org.apache.struts2.interceptor.csp.StrutsCspNonceReader;
 
 public class TextFieldTest extends AbstractCommonAttributesTest {
     private TextField tag;
@@ -41,7 +43,7 @@ public class TextFieldTest extends AbstractCommonAttributesTest {
 
 
         tag.evaluateParams();
-        map.putAll(tag.getParameters());
+        map.putAll(tag.getAttributes());
         theme.renderTag(getTagName(), context);
         String output = writer.getBuffer().toString();
         String expected = s("<input type='text' name='name' size='10' maxlength='11' value='val1' disabled='disabled' tabindex='1' id='id1' class='class1' style='style1' title='title'></input>");
@@ -52,6 +54,7 @@ public class TextFieldTest extends AbstractCommonAttributesTest {
     protected void setUp() throws Exception {
         super.setUp();
         this.tag = new TextField(stack, request, response);
+        this.tag.setCspNonceReader(new StrutsCspNonceReader(CspNonceSource.SESSION.name()));
     }
 
     @Override

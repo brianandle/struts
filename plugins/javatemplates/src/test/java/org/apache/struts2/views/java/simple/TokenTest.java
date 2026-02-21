@@ -20,9 +20,11 @@
  */
 package org.apache.struts2.views.java.simple;
 
-import com.opensymphony.xwork2.ActionContext;
+import org.apache.struts2.ActionContext;
 import org.apache.struts2.components.Token;
 import org.apache.struts2.components.UIBean;
+import org.apache.struts2.interceptor.csp.CspNonceSource;
+import org.apache.struts2.interceptor.csp.StrutsCspNonceReader;
 
 import java.util.HashMap;
 import java.util.regex.Pattern;
@@ -35,7 +37,7 @@ public class TokenTest extends AbstractTest {
         tag.setValue("val1");
 
         tag.evaluateParams();
-        map.putAll(tag.getParameters());
+        map.putAll(tag.getAttributes());
         theme.renderTag(getTagName(), context);
         String output = writer.getBuffer().toString();
 
@@ -49,9 +51,11 @@ public class TokenTest extends AbstractTest {
     protected void setUp() throws Exception {
         super.setUp();
         this.tag = new Token(stack, request, response);
+        this.tag.setCspNonceReader(new StrutsCspNonceReader(CspNonceSource.SESSION.name()));
 
-        ActionContext actionContext = ActionContext.of(new HashMap<>()).bind();
-        actionContext.setSession(new HashMap<>());
+        ActionContext.of()
+            .withSession(new HashMap<>())
+            .bind();
     }
 
     @Override

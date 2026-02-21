@@ -18,16 +18,16 @@
  */
 package org.apache.struts2.interceptor;
 
-import com.opensymphony.xwork2.ActionContext;
-import com.opensymphony.xwork2.ActionInvocation;
-import com.opensymphony.xwork2.inject.Inject;
-import com.opensymphony.xwork2.interceptor.AbstractInterceptor;
-import com.opensymphony.xwork2.util.TextParseUtil;
+import org.apache.struts2.ActionContext;
+import org.apache.struts2.ActionInvocation;
+import org.apache.struts2.inject.Inject;
+import org.apache.struts2.interceptor.AbstractInterceptor;
+import org.apache.struts2.util.TextParseUtil;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -55,8 +55,6 @@ public class FetchMetadataInterceptor extends AbstractInterceptor {
     private final Set<String> exemptedPaths = new HashSet<>();
     private final ResourceIsolationPolicy resourceIsolationPolicy = new StrutsResourceIsolationPolicy();
 
-    private boolean disabled = false;
-
     @Inject(required = false)
     public void setExemptedPaths(String paths) {
         this.exemptedPaths.addAll(TextParseUtil.commaDelimitedStringToSet(paths));
@@ -64,10 +62,6 @@ public class FetchMetadataInterceptor extends AbstractInterceptor {
 
     @Override
     public String intercept(ActionInvocation invocation) throws Exception {
-        if (disabled) {
-            LOG.trace("Fetch Metadata interceptor has been disabled");
-            return invocation.invoke();
-        }
         ActionContext context = invocation.getInvocationContext();
         HttpServletRequest request = context.getServletRequest();
 
@@ -111,7 +105,4 @@ public class FetchMetadataInterceptor extends AbstractInterceptor {
         response.setHeader(VARY_HEADER, VARY_HEADER_VALUE);
     }
 
-    public void setDisabled(String value) {
-        this.disabled = Boolean.parseBoolean(value);
-    }
 }

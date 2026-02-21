@@ -18,5 +18,5 @@
  * under the License.
  */
 -->
-<link rel="stylesheet" href="<@s.url value='${parameters.staticContentPath}/xhtml/styles.css' includeParams='none' encode='false'/>" type="text/css" <#include "/${parameters.templateDir}/simple/nonce.ftl" /> />
-<#include "/${parameters.templateDir}/simple/head.ftl" />
+<@s.link rel="stylesheet" href="${base}${attributes.staticContentPath}/xhtml/styles.css" type="text/css" />
+<#include "/${attributes.templateDir}/simple/head.ftl" />

@@ -19,23 +19,23 @@
  */
 -->
 <#if (actionErrors?? && actionErrors?size > 0)>
-	<ul<#rt/>
-<#if parameters.id??>
- id="${parameters.id}"<#rt/>
-</#if>            
-<#if parameters.cssClass??>
- class="${parameters.cssClass}"<#rt/>
+<ul<#rt/>
+<#if attributes.id??>
+ id="${attributes.id}"<#rt/>
+</#if>
+<#if attributes.cssClass??>
+ class="${attributes.cssClass}"<#rt/>
 <#else>
  class="errorMessage"<#rt/>
 </#if>
-<#if parameters.cssStyle??>
- style="${parameters.cssStyle}"<#rt/>
+<#if attributes.cssStyle??>
+ style="${attributes.cssStyle}"<#rt/>
 </#if>
 >
-	<#list actionErrors as error>
-		<#if error??>
-            <li><span><#if parameters.escape>${error!}<#else>${error!?no_esc}</#if></span><#rt/></li><#rt/>
-        </#if>
-	</#list>
-	</ul>
+<#list actionErrors as error>
+<#if error??>
+  <li><span><#if attributes.escape>${error!}<#else>${error!?no_esc}</#if></span><#rt/></li><#rt/>
+</#if>
+</#list>
+</ul>
 </#if>

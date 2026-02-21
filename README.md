@@ -17,12 +17,13 @@
 The Apache Struts web framework
 -------------------------------
 
-[![Build Status @ Jenkins](https://builds.apache.org/buildStatus/icon?job=Struts%2FStruts+Core%2Fmaster)](https://ci-builds.apache.org/job/Struts/job/Struts%20Core/job/master/)
-[![Build Status @ Travis](https://travis-ci.com/apache/struts.svg?branch=master)](https://app.travis-ci.com/apache/struts)
-[![Maven Central](https://maven-badges.herokuapp.com/maven-central/org.apache.struts/struts2-core/badge.svg)](https://maven-badges.herokuapp.com/maven-central/org.apache.struts/struts2-core/)
+[![Build Status](https://ci-builds.apache.org/buildStatus/icon?job=Struts%2FStruts+Core%2Fmain)](https://ci-builds.apache.org/job/Struts/job/Struts%20Core/job/main/)
+[![Java Build](https://github.com/apache/struts/actions/workflows/maven.yml/badge.svg)](https://github.com/apache/struts/actions/workflows/maven.yml)
+[![Maven Central](https://maven-badges.sml.io/maven-central/org.apache.struts/struts2-core/badge.svg)](https://maven-badges.sml.io/maven-central/org.apache.struts/struts2-core/)
 [![Javadocs](https://javadoc.io/badge/org.apache.struts/struts2-core.svg)](https://javadoc.io/doc/org.apache.struts/struts2-core)
-[![Coverage Status](https://coveralls.io/repos/github/apache/struts/badge.svg)](https://coveralls.io/github/apache/struts)
+[![Coverage](https://sonarcloud.io/api/project_badges/measure?project=apache_struts&metric=coverage)](https://sonarcloud.io/summary/new_code?id=apache_struts)
 [![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/apache/struts/badge)](https://deps.dev/maven/org.apache.struts%3Astruts2-core)
+[![CII Best Practices](https://bestpractices.coreinfrastructure.org/projects/6618/badge)](https://bestpractices.coreinfrastructure.org/projects/6618)
 [![License](http://img.shields.io/:license-apache-blue.svg)](http://www.apache.org/licenses/LICENSE-2.0.html)
 
 The Apache Struts web framework is a free open-source solution for creating Java web applications.
@@ -102,8 +103,15 @@ the Struts approach.
 
 ## Commercial Support
 
-The Apache Struts community does not offer commercial support by itself.
+The Apache Struts community does not offer commercial support by itself, but we maintain [a list of companies offering
+commercial support on our website](https://struts.apache.org/commercial-support.html).
 
 Some Apache Struts maintainers are working with [Tidelift](https://tidelift.com/) to provide commercial support and
 invest paid working time in the improvement of the Apache Struts framework. For more information, visit 
 the [Tidelift resources regarding Apache Struts](https://tidelift.com/subscription/pkg/maven-org-apache-struts-struts2-core?utm_source=maven-org-apache-struts-struts2-core&utm_medium=referral&utm_campaign=readme)
+
+## Thank you
+
+[YourKit](https://www.yourkit.com/) is kindly supporting open source projects with its full-featured Java Profiler.
+YourKit is the creator of innovative and intelligent tools for profiling Java and .NET applications.
+As an Apache committer, you can get a free license at [YourKit's open source sponsorship program](https://www.yourkit.com/java/profiler/purchase/#os_license).

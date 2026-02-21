@@ -18,15 +18,15 @@
  */
 package org.apache.struts2.interceptor;
 
-import com.opensymphony.xwork2.ActionInvocation;
-import com.opensymphony.xwork2.interceptor.AbstractInterceptor;
-import com.opensymphony.xwork2.interceptor.PreResultListener;
-import com.opensymphony.xwork2.util.TextParseUtil;
+import org.apache.struts2.ActionInvocation;
+import org.apache.struts2.interceptor.AbstractInterceptor;
+import org.apache.struts2.interceptor.PreResultListener;
+import org.apache.struts2.util.TextParseUtil;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -49,24 +49,16 @@ public class CoopInterceptor extends AbstractInterceptor implements PreResultLis
     private static final String COOP_HEADER = "Cross-Origin-Opener-Policy";
 
     private final Set<String> exemptedPaths = new HashSet<>();
-    private boolean disabled = false;
     private String mode = SAME_ORIGIN;
 
     @Override
     public String intercept(ActionInvocation invocation) throws Exception {
-        if (disabled) {
-            LOG.trace("COOP interceptor has been disabled");
-        } else {
-            invocation.addPreResultListener(this);
-        }
+        invocation.addPreResultListener(this);
         return invocation.invoke();
     }
 
     @Override
     public void beforeResult(ActionInvocation invocation, String resultCode) {
-        if (disabled) {
-            return;
-        }
         HttpServletRequest request = invocation.getInvocationContext().getServletRequest();
         String path = request.getContextPath();
 
@@ -95,7 +87,4 @@ public class CoopInterceptor extends AbstractInterceptor implements PreResultLis
         this.mode = mode;
     }
 
-    public void setDisabled(String value) {
-        this.disabled = Boolean.parseBoolean(value);
-    }
 }

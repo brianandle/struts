@@ -23,6 +23,8 @@ package org.apache.struts2.views.java.simple;
 
 import org.apache.struts2.components.ActionError;
 import org.apache.struts2.components.UIBean;
+import org.apache.struts2.interceptor.csp.CspNonceSource;
+import org.apache.struts2.interceptor.csp.StrutsCspNonceReader;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -36,7 +38,7 @@ public class ActionMessageTest extends AbstractTest {
         tag.setCssStyle("style");
 
         tag.evaluateParams();
-        map.putAll(tag.getParameters());
+        map.putAll(tag.getAttributes());
         theme.renderTag(getTagName(), context);
         String output = writer.getBuffer().toString();
         String expected = s("<ul style='style' class='class'><li><span>this clas is bad</span></li><li><span>baaaaad</span></li></ul>");
@@ -47,7 +49,7 @@ public class ActionMessageTest extends AbstractTest {
         tag.setCssStyle("style");
 
         tag.evaluateParams();
-        map.putAll(tag.getParameters());
+        map.putAll(tag.getAttributes());
         theme.renderTag(getTagName(), context);
         String output = writer.getBuffer().toString();
         String expected = s("<ul style='style' class='actionMessage'><li><span>this clas is bad</span></li><li><span>baaaaad</span></li></ul>");
@@ -57,7 +59,7 @@ public class ActionMessageTest extends AbstractTest {
     public void testRenderActionErrorNoErrors() {
         this.errors.clear();
         tag.evaluateParams();
-        map.putAll(tag.getParameters());
+        map.putAll(tag.getAttributes());
         theme.renderTag(getTagName(), context);
         String output = writer.getBuffer().toString();
         assertEquals("", output);
@@ -72,6 +74,7 @@ public class ActionMessageTest extends AbstractTest {
         //errors are needed to setup stack
         super.setUp();
         this.tag = new ActionError(stack, request, response);
+        this.tag.setCspNonceReader(new StrutsCspNonceReader(CspNonceSource.SESSION.name()));
     }
 
     @Override

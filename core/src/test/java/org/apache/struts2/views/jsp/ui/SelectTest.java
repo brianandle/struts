@@ -1059,6 +1059,19 @@ public class SelectTest extends AbstractUITagTest {
         verifyGenericProperties(tag, "xhtml", new String[]{"value"});
     }
 
+    public void testGenericHtml5() throws Exception {
+        SelectTag tag = new SelectTag();
+        prepareTagGeneric(tag);
+        verifyGenericProperties(tag, "html5", new String[]{"value"});
+    }
+
+    public void testGenericHtml5_clearTagStateSet() throws Exception {
+        SelectTag tag = new SelectTag();
+        tag.setPerformClearTagStateForTagPoolingServers(true);
+        prepareTagGeneric(tag);
+        verifyGenericProperties(tag, "html5", new String[]{"value"});
+    }
+
     public void testMultipleOn() throws Exception {
         SelectTag tag = new SelectTag();
         tag.setPageContext(pageContext);
@@ -1442,7 +1455,7 @@ public class SelectTest extends AbstractUITagTest {
             return id;
         }
     }
-    
+
     private void prepareTagGeneric(SelectTag tag) {
         TestAction testAction = (TestAction) action;
         ArrayList collection = new ArrayList();

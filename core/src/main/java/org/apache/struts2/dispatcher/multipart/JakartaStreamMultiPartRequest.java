@@ -18,458 +18,288 @@
  */
 package org.apache.struts2.dispatcher.multipart;
 
-import org.apache.commons.fileupload.FileItemIterator;
-import org.apache.commons.fileupload.FileItemStream;
-import org.apache.commons.fileupload.FileUploadBase;
-import org.apache.commons.fileupload.FileUploadBase.FileSizeLimitExceededException;
-import org.apache.commons.fileupload.servlet.ServletFileUpload;
-import org.apache.commons.fileupload.util.Streams;
+import jakarta.servlet.http.HttpServletRequest;
+import org.apache.commons.fileupload2.core.FileItemInput;
+import org.apache.commons.fileupload2.core.FileUploadFileCountLimitException;
+import org.apache.commons.fileupload2.core.FileUploadSizeException;
+import org.apache.commons.fileupload2.jakarta.servlet6.JakartaServletDiskFileUpload;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.struts2.dispatcher.LocalizedMessage;
 
-import javax.servlet.http.HttpServletRequest;
-import java.io.*;
-import java.util.*;
+import java.io.BufferedOutputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
+
+import static org.apache.commons.lang3.StringUtils.normalizeSpace;
 
 /**
- * Multi-part form data request adapter for Jakarta Commons FileUpload package that
+ * Multipart form data request adapter for Jakarta Commons FileUpload package that
  * leverages the streaming API rather than the traditional non-streaming API.
- *
+ * <p>
  * For more details see WW-3025
  *
- * @author Chris Cranford
  * @since 2.3.18
  */
 public class JakartaStreamMultiPartRequest extends AbstractMultiPartRequest {
 
-    static final Logger LOG = LogManager.getLogger(JakartaStreamMultiPartRequest.class);
-
-    /**
-     * Map between file fields and file data.
-     */
-    protected Map<String, List<FileInfo>> fileInfos = new HashMap<>();
-
-    /**
-     * Map between non-file fields and values.
-     */
-    protected Map<String, List<String>> parameters = new HashMap<>();
-
-    /* (non-Javadoc)
-     * @see org.apache.struts2.dispatcher.multipart.MultiPartRequest#cleanUp()
-     */
-    public void cleanUp() {
-        LOG.debug("Performing File Upload temporary storage cleanup.");
-        for (List<FileInfo> fileInfoList : fileInfos.values()) {
-            for (FileInfo fileInfo : fileInfoList) {
-                File file = fileInfo.getFile();
-                LOG.debug("Deleting file '{}'.", file.getName());
-                if (!file.delete()) {
-                    LOG.warn("There was a problem attempting to delete file '{}'.", file.getName());
-                }
-            }
-        }
-    }
-
-    /* (non-Javadoc)
-     * @see org.apache.struts2.dispatcher.multipart.MultiPartRequest#getContentType(java.lang.String)
-     */
-    public String[] getContentType(String fieldName) {
-        List<FileInfo> infos = fileInfos.get(fieldName);
-        if (infos == null) {
-            return null;
-        }
-
-        List<String> types = new ArrayList<>(infos.size());
-        for (FileInfo fileInfo : infos) {
-            types.add(fileInfo.getContentType());
-        }
-
-        return types.toArray(new String[types.size()]);
-    }
-
-    /* (non-Javadoc)
-     * @see org.apache.struts2.dispatcher.multipart.MultiPartRequest#getFile(java.lang.String)
-     */
-    public UploadedFile[] getFile(String fieldName) {
-        List<FileInfo> infos = fileInfos.get(fieldName);
-        if (infos == null) {
-            return null;
-        }
-
-        List<UploadedFile> files = new ArrayList<>(infos.size());
-        for (FileInfo fileInfo : infos) {
-            files.add(new StrutsUploadedFile(fileInfo.getFile()));
-        }
-
-        return files.toArray(new UploadedFile[files.size()]);
-    }
-
-    /* (non-Javadoc)
-     * @see org.apache.struts2.dispatcher.multipart.MultiPartRequest#getFileNames(java.lang.String)
-     */
-    public String[] getFileNames(String fieldName) {
-        List<FileInfo> infos = fileInfos.get(fieldName);
-        if (infos == null) {
-            return null;
-        }
-
-        List<String> names = new ArrayList<>(infos.size());
-        for (FileInfo fileInfo : infos) {
-            names.add(getCanonicalName(fileInfo.getOriginalName()));
-        }
-
-        return names.toArray(new String[names.size()]);
-    }
-
-    /* (non-Javadoc)
-     * @see org.apache.struts2.dispatcher.multipart.MultiPartRequest#getFileParameterNames()
-     */
-    public Enumeration<String> getFileParameterNames() {
-        return Collections.enumeration(fileInfos.keySet());
-    }
-
-    /* (non-Javadoc)
-     * @see org.apache.struts2.dispatcher.multipart.MultiPartRequest#getFilesystemName(java.lang.String)
-     */
-    public String[] getFilesystemName(String fieldName) {
-        List<FileInfo> infos = fileInfos.get(fieldName);
-        if (infos == null) {
-            return null;
-        }
-
-        List<String> names = new ArrayList<>(infos.size());
-        for (FileInfo fileInfo : infos) {
-            names.add(fileInfo.getFile().getName());
-        }
-
-        return names.toArray(new String[names.size()]);
-    }
-
-    /* (non-Javadoc)
-     * @see org.apache.struts2.dispatcher.multipart.MultiPartRequest#getParameter(java.lang.String)
-     */
-    public String getParameter(String name) {
-        List<String> values = parameters.get(name);
-        if (values != null && values.size() > 0) {
-            return values.get(0);
-        }
-        return null;
-    }
-
-    /* (non-Javadoc)
-     * @see org.apache.struts2.dispatcher.multipart.MultiPartRequest#getParameterNames()
-     */
-    public Enumeration<String> getParameterNames() {
-        return Collections.enumeration(parameters.keySet());
-    }
-
-    /* (non-Javadoc)
-     * @see org.apache.struts2.dispatcher.multipart.MultiPartRequest#getParameterValues(java.lang.String)
-     */
-    public String[] getParameterValues(String name) {
-        List<String> values = parameters.get(name);
-        if (values != null && values.size() > 0) {
-            return values.toArray(new String[values.size()]);
-        }
-        return null;
-    }
-
-    /* (non-Javadoc)
-     * @see org.apache.struts2.dispatcher.multipart.MultiPartRequest#parse(javax.servlet.http.HttpServletRequest, java.lang.String)
-     */
-    public void parse(HttpServletRequest request, String saveDir) throws IOException {
-        try {
-            setLocale(request);
-            processUpload(request, saveDir);
-        } catch (Exception e) {
-            LOG.warn("Error occurred during parsing of multi part request", e);
-            LocalizedMessage errorMessage = buildErrorMessage(e, new Object[]{});
-            if (!errors.contains(errorMessage)) {
-                errors.add(errorMessage);
-            }
-        }
-    }
+    private static final Logger LOG = LogManager.getLogger(JakartaStreamMultiPartRequest.class);
 
     /**
      * Processes the upload.
      *
      * @param request the servlet request
      * @param saveDir location of the save dir
-     * @throws Exception
      */
-    protected void processUpload(HttpServletRequest request, String saveDir) throws Exception {
+    @Override
+    protected void processUpload(HttpServletRequest request, String saveDir) throws IOException {
+        Charset charset = readCharsetEncoding(request);
+        Path location = Path.of(saveDir);
 
-        // Sanity check that the request is a multi-part/form-data request.
-        if (ServletFileUpload.isMultipartContent(request)) {
+        JakartaServletDiskFileUpload servletFileUpload =
+                prepareServletFileUpload(charset, location);
 
-            // Sanity check on request size.
-            boolean requestSizePermitted = isRequestSizePermitted(request);
-
-            // Interface with Commons FileUpload API
-            // Using the Streaming API
-            ServletFileUpload servletFileUpload = new ServletFileUpload();
-            if (maxSizeProvided) {
-                servletFileUpload.setSizeMax(maxSize);
-            }
-            FileItemIterator i = servletFileUpload.getItemIterator(request);
-
-            // Iterate the file items
-            while (i.hasNext()) {
-                try {
-                    FileItemStream itemStream = i.next();
-
-                    // If the file item stream is a form field, delegate to the
-                    // field item stream handler
-                    if (itemStream.isFormField()) {
-                        processFileItemStreamAsFormField(itemStream);
-                    }
-
-                    // Delegate the file item stream for a file field to the
-                    // file item stream handler, but delegation is skipped
-                    // if the requestSizePermitted check failed based on the
-                    // complete content-size of the request.
-                    else {
-
-                        // prevent processing file field item if request size not allowed.
-                        // also warn user in the logs.
-                        if (!requestSizePermitted) {
-                            addFileSkippedError(itemStream.getName(), request);
-                            LOG.warn("Skipped stream '{}', request maximum size ({}) exceeded.", itemStream.getName(), maxSize);
-                            continue;
-                        }
-
-                        processFileItemStreamAsFileField(itemStream, saveDir);
-                    }
-                } catch (IOException e) {
-                    LOG.warn("Error occurred during process upload", e);
-                }
-            }
-        }
-    }
-
-    /**
-     * Defines whether the request allowed based on content length.
-     *
-     * @param request the servlet request
-     * @return true if request size is permitted
-     */
-    protected boolean isRequestSizePermitted(HttpServletRequest request) {
-        // if maxSize is specified as -1, there is no sanity check and it's
-        // safe to return true for any request, delegating the failure
-        // checks later in the upload process.
-        if (maxSize == -1 || request == null) {
-            return true;
-        }
-
-        return request.getContentLength() < maxSize;
-    }
-
-    /**
-     * @param request the servlet request
-     * @return the request content length.
-     */
-    protected long getRequestSize(HttpServletRequest request) {
-        long requestSize = 0;
-        if (request != null) {
-            requestSize = request.getContentLength();
-        }
-
-        return requestSize;
-    }
-
-    /**
-     * Add a file skipped message notification for action messages.
-     *
-     * @param fileName file name
-     * @param request the servlet request
-     */
-    protected void addFileSkippedError(String fileName, HttpServletRequest request) {
-        String exceptionMessage = "Skipped file " + fileName + "; request size limit exceeded.";
-        FileSizeLimitExceededException exception = new FileUploadBase.FileSizeLimitExceededException(exceptionMessage, getRequestSize(request), maxSize);
-        LocalizedMessage message = buildErrorMessage(exception, new Object[]{fileName, getRequestSize(request), maxSize});
-        if (!errors.contains(message)) {
-            errors.add(message);
-        }
-    }
-
-    /**
-     * Processes the FileItemStream as a Form Field.
-     *
-     * @param itemStream file item stream
-     */
-    protected void processFileItemStreamAsFormField(FileItemStream itemStream) {
-        String fieldName = itemStream.getFieldName();
-        try {
-            List<String> values;
-            String fieldValue = Streams.asString(itemStream.openStream());
-            if (!parameters.containsKey(fieldName)) {
-                values = new ArrayList<>();
-                parameters.put(fieldName, values);
+        LOG.debug("Using Jakarta Stream API to process request");
+        servletFileUpload.getItemIterator(request).forEachRemaining(item -> {
+            if (item.isFormField()) {
+                LOG.debug(() -> "Processing a form field: " + normalizeSpace(item.getFieldName()));
+                processFileItemAsFormField(item);
             } else {
-                values = parameters.get(fieldName);
+                LOG.debug(() -> "Processing a file: " + normalizeSpace(item.getFieldName()));
+                processFileItemAsFileField(item, location);
             }
-            values.add(fieldValue);
-        } catch (IOException e) {
-            LOG.warn("Failed to handle form field '{}'.", fieldName, e);
+        });
+    }
+
+    /**
+     * Reads the entire contents of an input stream into a string.
+     *
+     * <p>This method uses a buffered approach to efficiently read the stream
+     * content without loading the entire stream into memory at once. It uses
+     * try-with-resources to ensure proper cleanup of resources.</p>
+     *
+     * @param inputStream the input stream to read from
+     * @return the stream contents as a UTF-8 string
+     * @throws IOException if an error occurs reading the stream
+     */
+    private String readStream(InputStream inputStream) throws IOException {
+        // Use try-with-resources to ensure ByteArrayOutputStream is properly closed
+        try (ByteArrayOutputStream result = new ByteArrayOutputStream()) {
+            byte[] buffer = new byte[1024]; // 1KB buffer for efficient reading
+            // Read the stream in chunks to avoid loading everything into memory at once
+            for (int length; (length = inputStream.read(buffer)) != -1; ) {
+                result.write(buffer, 0, length);
+            }
+            // Convert to string using UTF-8 encoding
+            return result.toString(StandardCharsets.UTF_8);
         }
     }
 
     /**
-     * Processes the FileItemStream as a file field.
+     * Processes a normal form field (non-file) from the multipart request using streaming API.
      *
-     * @param itemStream file item stream
-     * @param location location
+     * <p>This method handles text form fields by:</p>
+     * <ol>
+     *   <li>Validating the field name is not null</li>
+     *   <li>Reading the field value from the input stream</li>
+     *   <li>Checking if the field value exceeds maximum string length</li>
+     *   <li>Adding the value to the parameters collection</li>
+     * </ol>
+     *
+     * <p>Fields with null names are skipped with a warning log message.</p>
+     * <p>The streaming approach is more memory-efficient for large form data.</p>
+     *
+     * @param fileItemInput a form field item input from the streaming API
+     * @throws IOException if an error occurs reading the input stream
+     * @see #readStream(InputStream)
+     * @see #exceedsMaxStringLength(String, String)
      */
-    protected void processFileItemStreamAsFileField(FileItemStream itemStream, String location) {
-        // Skip file uploads that don't have a file name - meaning that no file was selected.
-        if (itemStream.getName() == null || itemStream.getName().trim().length() < 1) {
-            LOG.debug("No file has been uploaded for the field: {}", itemStream.getFieldName());
+    protected void processFileItemAsFormField(FileItemInput fileItemInput) throws IOException {
+        String fieldName = fileItemInput.getFieldName();
+        if (fieldName == null) {
+            LOG.warn("Form field has null fieldName, skipping");
             return;
         }
 
-        File file = null;
-        try {
-            // Create the temporary upload file.
-            file = createTemporaryFile(itemStream.getName(), location);
+        String fieldValue = readStream(fileItemInput.getInputStream());
+        if (exceedsMaxStringLength(fieldName, fieldValue)) {
+            return;
+        }
 
-            if (streamFileToDisk(itemStream, file)) {
-                createFileInfoFromItemStream(itemStream, file);
+        List<String> values = parameters.computeIfAbsent(fieldName, k -> new ArrayList<>());
+        values.add(fieldValue);
+    }
+
+    /**
+     * @return actual size of already uploaded files
+     */
+    protected Long actualSizeOfUploadedFiles() {
+        return uploadedFiles.values().stream()
+                .map(files -> files.stream().map(UploadedFile::length).reduce(0L, Long::sum))
+                .reduce(0L, Long::sum);
+    }
+
+    private boolean exceedsMaxFiles(FileItemInput fileItemInput) {
+        if (maxFiles != null && maxFiles == uploadedFiles.size()) {
+            if (LOG.isDebugEnabled()) {
+                LOG.debug("Cannot accept another file: {} as it will exceed max files: {}",
+                        normalizeSpace(fileItemInput.getName()), maxFiles);
             }
-        } catch (IOException e) {
-            if (file != null) {
-                try {
-                    file.delete();
-                } catch (SecurityException se) {
-                    LOG.warn("Failed to delete '{}' due to security exception above.", file.getName(), se);
-                }
+            LocalizedMessage errorMessage = buildErrorMessage(
+                    FileUploadFileCountLimitException.class,
+                    String.format("File %s exceeds allowed maximum number of files %s",
+                            fileItemInput.getName(), maxFiles),
+                    new Object[]{maxFiles, uploadedFiles.size()}
+            );
+            if (!errors.contains(errorMessage)) {
+                errors.add(errorMessage);
             }
+            return true;
+        }
+        return false;
+    }
+
+    private void exceedsMaxSizeOfFiles(FileItemInput fileItemInput, File file, Long currentFilesSize) {
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("File: {} of size: {} exceeds allowed max size: {}, actual size of already uploaded files: {}",
+                    normalizeSpace(fileItemInput.getName()), file.length(), maxSizeOfFiles, currentFilesSize
+            );
+        }
+        LocalizedMessage errorMessage = buildErrorMessage(
+                FileUploadSizeException.class,
+                String.format("Size %s of file %s exceeds allowed max size %s", file.length(),
+                        fileItemInput.getName(), maxSizeOfFiles),
+                new Object[]{maxSizeOfFiles, currentFilesSize}
+        );
+        if (!errors.contains(errorMessage)) {
+            errors.add(errorMessage);
+        }
+        if (!file.delete() && LOG.isWarnEnabled()) {
+            LOG.warn("Cannot delete file: {} which exceeds maximum size: {} of all files!",
+                    normalizeSpace(fileItemInput.getName()), maxSizeOfFiles);
         }
     }
 
     /**
-     * Creates a temporary file based on the given filename and location.
+     * Processes a file field from the multipart request using streaming API.
      *
-     * @param fileName file name
-     * @param location location
-     * @return temporary file based on the given filename and location
-     * @throws IOException in case of IO errors
+     * <p>This method handles file uploads by:</p>
+     * <ol>
+     *   <li>Validating the file name and field name are not null/empty</li>
+     *   <li>Checking if the upload exceeds maximum file count</li>
+     *   <li>Creating a temporary file in the specified location</li>
+     *   <li>Streaming the file content directly to disk</li>
+     *   <li>Checking if the total size exceeds maximum allowed size</li>
+     *   <li>Creating an {@link UploadedFile} abstraction or cleaning up on size exceeded</li>
+     * </ol>
+     *
+     * <p>Files with null names or field names are skipped with appropriate logging.</p>
+     * <p>The streaming approach is more memory-efficient for large file uploads
+     * as it writes directly to disk rather than loading into memory first.</p>
+     *
+     * @param fileItemInput file item representing upload file from streaming API
+     * @param location      the directory where temporary files will be created
+     * @throws IOException if an error occurs during file processing
+     * @see #createTemporaryFile(String, Path)
+     * @see #streamFileToDisk(FileItemInput, File)
+     * @see #createUploadedFile(FileItemInput, File)
      */
-    protected File createTemporaryFile(String fileName, String location) throws IOException {
-        String name = fileName
-                .substring(fileName.lastIndexOf('/') + 1)
-                .substring(fileName.lastIndexOf('\\') + 1);
-
-        String prefix = name;
-        String suffix = "";
-
-        if (name.contains(".")) {
-            prefix = name.substring(0, name.lastIndexOf('.'));
-            suffix = name.substring(name.lastIndexOf('.'));
+    protected void processFileItemAsFileField(FileItemInput fileItemInput, Path location) throws IOException {
+        // Skip file uploads that don't have a file name - meaning that no file was selected.
+        if (fileItemInput.getName() == null || fileItemInput.getName().trim().isEmpty()) {
+            LOG.debug(() -> "No file has been uploaded for the field: " + normalizeSpace(fileItemInput.getFieldName()));
+            return;
         }
 
-        if (prefix.length() < 3) {
-            prefix = UUID.randomUUID().toString();
+        // Skip file uploads that don't have a field name
+        if (fileItemInput.getFieldName() == null) {
+            LOG.warn("File upload has null fieldName, skipping");
+            return;
         }
 
-        File file = File.createTempFile(prefix + "_", suffix, new File(location));
-        LOG.debug("Creating temporary file '{}' (originally '{}').", file.getName(), fileName);
-        return file;
+        if (exceedsMaxFiles(fileItemInput)) {
+            return;
+        }
+
+        File file = createTemporaryFile(fileItemInput.getName(), location);
+        streamFileToDisk(fileItemInput, file);
+
+        // Reject empty files (0 bytes) as they are not considered valid uploads
+        if (rejectEmptyFile(file.length(), fileItemInput.getName(), fileItemInput.getFieldName())) {
+            // Clean up the empty temporary file
+            deleteFile(file.toPath());
+            return;
+        }
+
+        Long currentFilesSize = maxSizeOfFiles != null ? actualSizeOfUploadedFiles() : null;
+        if (maxSizeOfFiles != null && currentFilesSize + file.length() >= maxSizeOfFiles) {
+            exceedsMaxSizeOfFiles(fileItemInput, file, currentFilesSize);
+        } else {
+            createUploadedFile(fileItemInput, file);
+        }
     }
 
     /**
      * Streams the file upload stream to the specified file.
      *
-     * @param itemStream file item stream
-     * @param file the file
-     * @return true if stream was successfully
-     * @throws IOException in case of IO errors
+     * @param fileItemInput file item input
+     * @param file          the file
      */
-    protected boolean streamFileToDisk(FileItemStream itemStream, File file) throws IOException {
-        boolean result = false;
-        try (InputStream input = itemStream.openStream();
-                OutputStream output = new BufferedOutputStream(new FileOutputStream(file), bufferSize)) {
+    protected void streamFileToDisk(FileItemInput fileItemInput, File file) throws IOException {
+        InputStream input = fileItemInput.getInputStream();
+        try (OutputStream output = new BufferedOutputStream(Files.newOutputStream(file.toPath()), bufferSize)) {
             byte[] buffer = new byte[bufferSize];
-            LOG.debug("Streaming file using buffer size {}.", bufferSize);
-            for (int length = 0; ((length = input.read(buffer)) > 0); ) {
+            LOG.debug("Streaming file: {} using buffer size: {}", normalizeSpace(fileItemInput.getName()), bufferSize);
+            for (int length; ((length = input.read(buffer)) > 0); ) {
                 output.write(buffer, 0, length);
             }
-            result = true;
-        }
-        return result;
-    }
-
-    /**
-     * Creates an internal <code>FileInfo</code> structure used to pass information
-     * to the <code>FileUploadInterceptor</code> during the interceptor stack
-     * invocation process.
-     *
-     * @param itemStream file item stream
-     * @param file the file
-     */
-    protected void createFileInfoFromItemStream(FileItemStream itemStream, File file) {
-        // gather attributes from file upload stream.
-        String fileName = itemStream.getName();
-        String fieldName = itemStream.getFieldName();
-        // create internal structure
-        FileInfo fileInfo = new FileInfo(file, itemStream.getContentType(), fileName);
-        // append or create new entry.
-        if (!fileInfos.containsKey(fieldName)) {
-            List<FileInfo> infos = new ArrayList<>();
-            infos.add(fileInfo);
-            fileInfos.put(fieldName, infos);
-        } else {
-            fileInfos.get(fieldName).add(fileInfo);
         }
     }
 
     /**
-     * Internal data structure used to store a reference to information needed
-     * to later pass post processing data to the <code>FileUploadInterceptor</code>.
+     * Creates an {@link UploadedFile} abstraction over an uploaded file.
      *
-     * @since 7.0.0
+     * <p>This method creates a wrapper around the uploaded file that provides
+     * a consistent interface for accessing file information and content.
+     * The created {@link UploadedFile} instance contains:</p>
+     * <ul>
+     *   <li>The original filename as provided by the client</li>
+     *   <li>The content type (MIME type) if available</li>
+     *   <li>The form field name that contained the file</li>
+     *   <li>A reference to the temporary file on disk</li>
+     * </ul>
+     *
+     * <p>The file is automatically added to the uploaded files collection,
+     * grouped by field name to support multiple file uploads per field.</p>
+     *
+     * @param fileItemInput file item stream containing file metadata
+     * @param file          the temporary file containing the uploaded content
+     * @see UploadedFile
+     * @see StrutsUploadedFile
      */
-     public static class FileInfo implements Serializable {
+    protected void createUploadedFile(FileItemInput fileItemInput, File file) {
+        String fileName = fileItemInput.getName();
+        String fieldName = fileItemInput.getFieldName();
 
-        private static final long serialVersionUID = 1083158552766906037L;
+        // fieldName null check already done in processFileItemAsFileField
+        UploadedFile uploadedFile = StrutsUploadedFile.Builder
+                .create(file)
+                .withOriginalName(fileName)
+                .withContentType(fileItemInput.getContentType())
+                .withInputName(fieldName)
+                .build();
 
-        private File file;
-        private String contentType;
-        private String originalName;
-
-        /**
-         * Default constructor.
-         *
-         * @param file the file
-         * @param contentType content type
-         * @param originalName original file name
-         */
-        public FileInfo(File file, String contentType, String originalName) {
-            this.file = file;
-            this.contentType = contentType;
-            this.originalName = originalName;
-        }
-
-        /**
-         * @return the file
-         */
-        public File getFile() {
-            return file;
-        }
-
-        /**
-         * @return content type
-         */
-        public String getContentType() {
-            return contentType;
-        }
-
-        /**
-         * @return original file name
-         */
-        public String getOriginalName() {
-            return originalName;
-        }
+        List<UploadedFile> infos = uploadedFiles.computeIfAbsent(fieldName, key -> new ArrayList<>());
+        infos.add(uploadedFile);
     }
 
 }

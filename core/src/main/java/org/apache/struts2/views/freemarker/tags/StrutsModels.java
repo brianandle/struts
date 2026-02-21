@@ -18,11 +18,9 @@
  */
 package org.apache.struts2.views.freemarker.tags;
 
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-
-import com.opensymphony.xwork2.util.ValueStack;
-import org.apache.struts2.components.Script;
+import org.apache.struts2.util.ValueStack;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
 /**
  * Provides @s.tag access for various tags.
@@ -76,6 +74,7 @@ public class StrutsModels {
     protected InputTransferSelectModel inputtransferselect;
     protected ScriptModel script;
     protected LinkModel link;
+    protected CompressModel compress;
 
 
     public StrutsModels(ValueStack stack, HttpServletRequest req, HttpServletResponse res) {
@@ -155,6 +154,7 @@ public class StrutsModels {
 
         return hidden;
     }
+
     public LabelModel getLabel() {
         if (label == null) {
             label = new LabelModel(stack, req, res);
@@ -387,7 +387,7 @@ public class StrutsModels {
     }
 
     public UpDownSelectModel getUpdownselect() {
-        if (updownselect == null)  {
+        if (updownselect == null) {
             updownselect = new UpDownSelectModel(stack, req, res);
         }
         return updownselect;
@@ -427,6 +427,13 @@ public class StrutsModels {
             inputtransferselect = new InputTransferSelectModel(stack, req, res);
         }
         return inputtransferselect;
+    }
+
+    public CompressModel getCompress() {
+        if (compress == null) {
+            compress = new CompressModel(stack, req, res);
+        }
+        return compress;
     }
 
 }

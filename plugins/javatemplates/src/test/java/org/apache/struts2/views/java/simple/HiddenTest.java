@@ -22,6 +22,8 @@ package org.apache.struts2.views.java.simple;
 
 import org.apache.struts2.components.Hidden;
 import org.apache.struts2.components.UIBean;
+import org.apache.struts2.interceptor.csp.CspNonceSource;
+import org.apache.struts2.interceptor.csp.StrutsCspNonceReader;
 
 public class HiddenTest extends AbstractTest {
     private Hidden tag;
@@ -38,7 +40,7 @@ public class HiddenTest extends AbstractTest {
 
 
         tag.evaluateParams();
-        map.putAll(tag.getParameters());
+        map.putAll(tag.getAttributes());
         theme.renderTag(getTagName(), context);
         String output = writer.getBuffer().toString();
         String expected = s("<input name='name' type='hidden' value='val1' disabled='disabled' id='id1' class='class1' style='style1'></input>");
@@ -49,6 +51,7 @@ public class HiddenTest extends AbstractTest {
     protected void setUp() throws Exception {
         super.setUp();
         this.tag = new Hidden(stack, request, response);
+        this.tag.setCspNonceReader(new StrutsCspNonceReader(CspNonceSource.SESSION.name()));
     }
 
     @Override

@@ -18,6 +18,10 @@
  */
 package org.apache.struts2.config.entities;
 
+import org.apache.commons.lang3.StringUtils;
+import org.apache.struts2.StrutsConstants;
+import org.apache.struts2.dispatcher.StaticContentLoader;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -26,10 +30,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.regex.Pattern;
-
-import org.apache.commons.lang3.StringUtils;
-import org.apache.struts2.StrutsConstants;
-import org.apache.struts2.dispatcher.StaticContentLoader;
 
 public class ConstantConfig {
     private Boolean devMode;
@@ -64,6 +64,9 @@ public class ConstantConfig {
     private String uiTheme;
     private String uiThemeExpansionToken;
     private Long multipartMaxSize;
+    private Long multipartMaxFiles;
+    private Long multipartMaxFileSize;
+    private Long multipartMaxStringLength;
     private String multipartSaveDir;
     private Integer multipartBufferSize;
     private BeanConfig multipartParser;
@@ -87,6 +90,7 @@ public class ConstantConfig {
     private Boolean freemarkerWrapperAltMap;
     private BeanConfig xworkConverter;
     private Boolean mapperAlwaysSelectFullNamespace;
+    private Boolean actionConfigFallbackToEmptyNamespace;
     private BeanConfig localeProviderFactory;
     private String mapperIdParameterName;
     private Boolean ognlAllowStaticFieldAccess;
@@ -126,9 +130,11 @@ public class ConstantConfig {
     private Set<Class<?>> excludedClasses;
     private List<Pattern> excludedPackageNamePatterns;
     private Set<String> excludedPackageNames;
+    private Set<Class<?>> excludedPackageExemptClasses;
     private Set<Class<?>> devModeExcludedClasses;
     private List<Pattern> devModeExcludedPackageNamePatterns;
     private Set<String> devModeExcludedPackageNames;
+    private Set<Class<?>> devModeExcludedPackageExemptClasses;
     private BeanConfig excludedPatternsChecker;
     private BeanConfig acceptedPatternsChecker;
     private BeanConfig notExcludedAcceptedPatternsChecker;
@@ -140,6 +146,7 @@ public class ConstantConfig {
     private String strictMethodInvocationMethodRegex;
     private BeanConfig textProviderFactory;
     private BeanConfig localizedTextProvider;
+    private Boolean disallowProxyObjectAccess;
     private Boolean disallowProxyMemberAccess;
     private Integer ognlAutoGrowthCollectionLimit;
     private String staticContentPath;
@@ -194,9 +201,12 @@ public class ConstantConfig {
         map.put(StrutsConstants.STRUTS_UI_TEMPLATEDIR, uiTemplateDir);
         map.put(StrutsConstants.STRUTS_UI_THEME, uiTheme);
         map.put(StrutsConstants.STRUTS_UI_THEME_EXPANSION_TOKEN, uiThemeExpansionToken);
-        map.put(StrutsConstants.STRUTS_MULTIPART_MAXSIZE, Objects.toString(multipartMaxSize, null));
-        map.put(StrutsConstants.STRUTS_MULTIPART_SAVEDIR, multipartSaveDir);
-        map.put(StrutsConstants.STRUTS_MULTIPART_BUFFERSIZE, Objects.toString(multipartBufferSize, null));
+        map.put(StrutsConstants.STRUTS_MULTIPART_MAX_SIZE, Objects.toString(multipartMaxSize, null));
+        map.put(StrutsConstants.STRUTS_MULTIPART_MAX_FILES, Objects.toString(multipartMaxFiles, null));
+        map.put(StrutsConstants.STRUTS_MULTIPART_MAX_FILE_SIZE, Objects.toString(multipartMaxFileSize, null));
+        map.put(StrutsConstants.STRUTS_MULTIPART_MAX_STRING_LENGTH, Objects.toString(multipartMaxStringLength, null));
+        map.put(StrutsConstants.STRUTS_MULTIPART_SAVE_DIR, multipartSaveDir);
+        map.put(StrutsConstants.STRUTS_MULTIPART_BUFFER_SIZE, Objects.toString(multipartBufferSize, null));
         map.put(StrutsConstants.STRUTS_MULTIPART_PARSER, beanConfToString(multipartParser));
         map.put(StrutsConstants.STRUTS_MULTIPART_ENABLED, Objects.toString(multipartEnabled, null));
         map.put(StrutsConstants.STRUTS_MULTIPART_VALIDATION_REGEX, Objects.toString(multipartValidationRegex, null));
@@ -204,7 +214,6 @@ public class ConstantConfig {
         map.put(StrutsConstants.STRUTS_OBJECTFACTORY_SPRING_AUTOWIRE_ALWAYS_RESPECT, Objects.toString(objectFactorySpringAutoWireAlwaysRespect, null));
         map.put(StrutsConstants.STRUTS_OBJECTFACTORY_SPRING_USE_CLASS_CACHE, Objects.toString(objectFactorySpringUseClassCache, null));
         map.put(StrutsConstants.STRUTS_OBJECTFACTORY_SPRING_ENABLE_AOP_SUPPORT, Objects.toString(objectFactorySpringEnableAopSupport, null));
-        map.put(StrutsConstants.STRUTS_XSLT_NOCACHE, Objects.toString(xsltNocache, null));
         map.put(StrutsConstants.STRUTS_CUSTOM_PROPERTIES, StringUtils.join(customProperties, ','));
         map.put(StrutsConstants.STRUTS_CUSTOM_I18N_RESOURCES, StringUtils.join(customI18nResources, ','));
         map.put(StrutsConstants.STRUTS_MAPPER_CLASS, beanConfToString(mapperClass));
@@ -218,6 +227,7 @@ public class ConstantConfig {
         map.put(StrutsConstants.STRUTS_FREEMARKER_WRAPPER_ALT_MAP, Objects.toString(freemarkerWrapperAltMap, null));
         map.put(StrutsConstants.STRUTS_XWORKCONVERTER, beanConfToString(xworkConverter));
         map.put(StrutsConstants.STRUTS_ALWAYS_SELECT_FULL_NAMESPACE, Objects.toString(mapperAlwaysSelectFullNamespace, null));
+        map.put(StrutsConstants.STRUTS_ACTION_CONFIG_FALLBACK_TO_EMPTY_NAMESPACE, Objects.toString(actionConfigFallbackToEmptyNamespace, null));
         map.put(StrutsConstants.STRUTS_LOCALE_PROVIDER_FACTORY, beanConfToString(localeProviderFactory));
         map.put(StrutsConstants.STRUTS_ID_PARAMETER_NAME, mapperIdParameterName);
         map.put(StrutsConstants.STRUTS_ALLOW_STATIC_FIELD_ACCESS, Objects.toString(ognlAllowStaticFieldAccess, null));
@@ -251,15 +261,16 @@ public class ConstantConfig {
         map.put(StrutsConstants.STRUTS_ALLOWED_METHOD_NAMES, Objects.toString(allowedMethodNames, null));
         map.put(StrutsConstants.STRUTS_DEFAULT_METHOD_NAME, defaultMethodName);
         map.put(StrutsConstants.STRUTS_MAPPER_ACTION_PREFIX_ENABLED, Objects.toString(mapperActionPrefixEnabled, null));
-        map.put(StrutsConstants.STRUTS_MAPPER_ACTION_PREFIX_CROSSNAMESPACES, Objects.toString(mapperActionPrefixCrossNamespaces, null));
         map.put(StrutsConstants.DEFAULT_TEMPLATE_TYPE_CONFIG_KEY, uiTemplateSuffix);
         map.put(StrutsConstants.STRUTS_DISPATCHER_ERROR_HANDLER, beanConfToString(dispatcherErrorHandler));
         map.put(StrutsConstants.STRUTS_EXCLUDED_CLASSES, classesToString(excludedClasses));
         map.put(StrutsConstants.STRUTS_EXCLUDED_PACKAGE_NAME_PATTERNS, StringUtils.join(excludedPackageNamePatterns, ','));
         map.put(StrutsConstants.STRUTS_EXCLUDED_PACKAGE_NAMES, StringUtils.join(excludedPackageNames, ','));
+        map.put(StrutsConstants.STRUTS_EXCLUDED_PACKAGE_EXEMPT_CLASSES, classesToString(excludedPackageExemptClasses));
         map.put(StrutsConstants.STRUTS_DEV_MODE_EXCLUDED_CLASSES, classesToString(devModeExcludedClasses));
         map.put(StrutsConstants.STRUTS_DEV_MODE_EXCLUDED_PACKAGE_NAME_PATTERNS, StringUtils.join(devModeExcludedPackageNamePatterns, ','));
         map.put(StrutsConstants.STRUTS_DEV_MODE_EXCLUDED_PACKAGE_NAMES, StringUtils.join(devModeExcludedPackageNames, ','));
+        map.put(StrutsConstants.STRUTS_DEV_MODE_EXCLUDED_PACKAGE_EXEMPT_CLASSES, classesToString(devModeExcludedPackageExemptClasses));
         map.put(StrutsConstants.STRUTS_EXCLUDED_PATTERNS_CHECKER, beanConfToString(excludedPatternsChecker));
         map.put(StrutsConstants.STRUTS_ACCEPTED_PATTERNS_CHECKER, beanConfToString(acceptedPatternsChecker));
         map.put(StrutsConstants.STRUTS_NOT_EXCLUDED_ACCEPTED_PATTERNS_CHECKER, beanConfToString(notExcludedAcceptedPatternsChecker));
@@ -271,6 +282,7 @@ public class ConstantConfig {
         map.put(StrutsConstants.STRUTS_SMI_METHOD_REGEX, strictMethodInvocationMethodRegex);
         map.put(StrutsConstants.STRUTS_TEXT_PROVIDER_FACTORY, beanConfToString(textProviderFactory));
         map.put(StrutsConstants.STRUTS_LOCALIZED_TEXT_PROVIDER, beanConfToString(localizedTextProvider));
+        map.put(StrutsConstants.STRUTS_DISALLOW_PROXY_OBJECT_ACCESS, Objects.toString(disallowProxyObjectAccess, null));
         map.put(StrutsConstants.STRUTS_DISALLOW_PROXY_MEMBER_ACCESS, Objects.toString(disallowProxyMemberAccess, null));
         map.put(StrutsConstants.STRUTS_OGNL_AUTO_GROWTH_COLLECTION_LIMIT, Objects.toString(ognlAutoGrowthCollectionLimit, null));
         map.put(StrutsConstants.STRUTS_UI_STATIC_CONTENT_PATH, Objects.toString(staticContentPath, StaticContentLoader.DEFAULT_STATIC_CONTENT_PATH));
@@ -580,6 +592,30 @@ public class ConstantConfig {
         this.multipartMaxSize = multipartMaxSize;
     }
 
+    public Long getMultipartMaxFiles() {
+        return multipartMaxFiles;
+    }
+
+    public void setMultipartMaxFiles(Long multipartMaxFiles) {
+        this.multipartMaxFiles = multipartMaxFiles;
+    }
+
+    public Long getMultipartMaxFileSize() {
+        return multipartMaxFileSize;
+    }
+
+    public void setMultipartMaxFileSize(Long multipartMaxFileSize) {
+        this.multipartMaxFileSize = multipartMaxFileSize;
+    }
+
+    public Long getMultipartMaxStringLength() {
+        return multipartMaxStringLength;
+    }
+
+    public void setMultipartMaxStringLength(Long multipartMaxStringLength) {
+        this.multipartMaxStringLength = multipartMaxStringLength;
+    }
+
     public String getMultipartSaveDir() {
         return multipartSaveDir;
     }
@@ -778,6 +814,14 @@ public class ConstantConfig {
 
     public void setMapperAlwaysSelectFullNamespace(Boolean mapperAlwaysSelectFullNamespace) {
         this.mapperAlwaysSelectFullNamespace = mapperAlwaysSelectFullNamespace;
+    }
+
+    public Boolean getActionConfigFallbackToEmptyNamespace() {
+        return actionConfigFallbackToEmptyNamespace;
+    }
+
+    public void setActionConfigFallbackToEmptyNamespace(Boolean actionConfigFallbackToEmptyNamespace) {
+        this.actionConfigFallbackToEmptyNamespace = actionConfigFallbackToEmptyNamespace;
     }
 
     public BeanConfig getLocaleProviderFactory() {
@@ -1176,6 +1220,14 @@ public class ConstantConfig {
         this.excludedPackageNames = excludedPackageNames;
     }
 
+    public Set<Class<?>> getExcludedPackageExemptClasses() {
+        return excludedPackageExemptClasses;
+    }
+
+    public void setExcludedPackageExemptClasses(Set<Class<?>> excludedPackageExemptClasses) {
+        this.excludedPackageExemptClasses = excludedPackageExemptClasses;
+    }
+
     public Set<Class<?>> getDevModeExcludedClasses() {
         return devModeExcludedClasses;
     }
@@ -1198,6 +1250,14 @@ public class ConstantConfig {
 
     public void setDevModeExcludedPackageNames(Set<String> devModeExcludedPackageNames) {
         this.devModeExcludedPackageNames = devModeExcludedPackageNames;
+    }
+
+    public Set<Class<?>> getDevModeExcludedPackageExemptClasses() {
+        return devModeExcludedPackageExemptClasses;
+    }
+
+    public void setDevModeExcludedPackageExemptClasses(Set<Class<?>> devModeExcludedPackageExemptClasses) {
+        this.devModeExcludedPackageExemptClasses = devModeExcludedPackageExemptClasses;
     }
 
     public BeanConfig getExcludedPatternsChecker() {
@@ -1310,6 +1370,14 @@ public class ConstantConfig {
 
     public void setLocalizedTextProvider(Class<?> clazz) {
         this.localizedTextProvider = new BeanConfig(clazz, clazz.getName());
+    }
+
+    public Boolean getDisallowProxyObjectAccess() {
+        return disallowProxyObjectAccess;
+    }
+
+    public void setDisallowProxyObjectAccess(Boolean disallowProxyObjectAccess) {
+        this.disallowProxyObjectAccess = disallowProxyObjectAccess;
     }
 
     public Boolean getDisallowProxyMemberAccess() {

@@ -18,29 +18,31 @@
  */
 package org.apache.struts2.dispatcher;
 
-import com.opensymphony.xwork2.ActionContext;
-import junit.framework.TestCase;
-import org.apache.struts2.dispatcher.Dispatcher;
+import org.apache.struts2.ActionContext;
 import org.apache.struts2.dispatcher.filter.StrutsPrepareAndExecuteFilter;
+import org.junit.Test;
 import org.springframework.mock.web.MockFilterChain;
 import org.springframework.mock.web.MockFilterConfig;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 
-import javax.servlet.ServletException;
-import javax.servlet.ServletRequest;
-import javax.servlet.ServletResponse;
-import javax.servlet.FilterConfig;
-import javax.servlet.http.HttpServletRequest;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.ServletRequest;
+import jakarta.servlet.ServletResponse;
 import java.io.IOException;
-import java.util.regex.Pattern;
-import java.util.ArrayList;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 /**
  * Integration tests for the filter
  */
-public class StrutsPrepareAndExecuteFilterIntegrationTest extends TestCase {
+public class StrutsPrepareAndExecuteFilterIntegrationTest {
 
+    @Test
     public void test404() throws ServletException, IOException {
         MockHttpServletRequest request = new MockHttpServletRequest();
         MockHttpServletResponse response = new MockHttpServletResponse();
@@ -61,6 +63,7 @@ public class StrutsPrepareAndExecuteFilterIntegrationTest extends TestCase {
         assertNull(Dispatcher.getInstance());
     }
 
+    @Test
     public void test200() throws ServletException, IOException {
         MockHttpServletRequest request = new MockHttpServletRequest();
         MockHttpServletResponse response = new MockHttpServletResponse();
@@ -81,6 +84,7 @@ public class StrutsPrepareAndExecuteFilterIntegrationTest extends TestCase {
         assertNull(Dispatcher.getInstance());
     }
 
+    @Test
     public void testActionMappingLookup() throws ServletException, IOException {
         MockHttpServletRequest request = new MockHttpServletRequest();
         MockHttpServletResponse response = new MockHttpServletResponse();
@@ -115,10 +119,12 @@ public class StrutsPrepareAndExecuteFilterIntegrationTest extends TestCase {
         assertTrue((Boolean) request.getAttribute("__invoked"));
     }
 
+    @Test
     public void testUriPatternExclusion() throws ServletException, IOException {
         MockHttpServletRequest request = new MockHttpServletRequest();
         MockHttpServletResponse response = new MockHttpServletResponse();
         MockFilterConfig filterConfig = new MockFilterConfig();
+        filterConfig.addInitParameter("struts.action.excludePattern", ".*hello.*");
         MockFilterChain filterChain = new MockFilterChain() {
             @Override
             public void doFilter(ServletRequest req, ServletResponse res) {
@@ -127,20 +133,14 @@ public class StrutsPrepareAndExecuteFilterIntegrationTest extends TestCase {
         };
 
         request.setRequestURI("/hello.action");
-        StrutsPrepareAndExecuteFilter filter = new StrutsPrepareAndExecuteFilter() {
-            @Override
-            public void init( FilterConfig filterConfig ) throws ServletException {
-                super.init(filterConfig);
-                excludedPatterns = new ArrayList<Pattern>();
-                excludedPatterns.add(Pattern.compile(".*hello.*"));
-            }
-        };
+        StrutsPrepareAndExecuteFilter filter = new StrutsPrepareAndExecuteFilter();
         filter.init(filterConfig);
         filter.doFilter(request, response, filterChain);
         assertEquals(200, response.getStatus());
         assertEquals("invoked", request.getAttribute("i_was"));
     }
 
+    @Test
     public void testStaticFallthrough() throws ServletException, IOException {
         MockHttpServletRequest request = new MockHttpServletRequest();
         MockHttpServletResponse response = new MockHttpServletResponse();
@@ -168,6 +168,7 @@ public class StrutsPrepareAndExecuteFilterIntegrationTest extends TestCase {
         assertNull(Dispatcher.getInstance());
     }
 
+    @Test
     public void testStaticExecute() throws ServletException, IOException {
         MockHttpServletRequest request = new MockHttpServletRequest();
         MockHttpServletResponse response = new MockHttpServletResponse();
@@ -189,6 +190,7 @@ public class StrutsPrepareAndExecuteFilterIntegrationTest extends TestCase {
         assertNull(Dispatcher.getInstance());
     }
 
+    @Test
     public void testDestroy() throws ServletException {
         MockFilterConfig filterConfig = new MockFilterConfig();
         final MockPrepareOperations[] prepareOperations = {null};
@@ -208,7 +210,7 @@ public class StrutsPrepareAndExecuteFilterIntegrationTest extends TestCase {
         assertTrue(prepareOperations[0].isCleaned());
     }
 
-    private class MockPrepareOperations extends PrepareOperations {
+    private static class MockPrepareOperations extends PrepareOperations {
         private boolean cleaned;
 
         public MockPrepareOperations(Dispatcher dispatcher) {

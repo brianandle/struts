@@ -18,23 +18,37 @@
  */
 package org.apache.struts2.views.freemarker;
 
-import com.opensymphony.xwork2.FileManager;
-import com.opensymphony.xwork2.FileManagerFactory;
-import com.opensymphony.xwork2.inject.Container;
-import com.opensymphony.xwork2.inject.Inject;
-import com.opensymphony.xwork2.util.ClassLoaderUtil;
-import com.opensymphony.xwork2.util.ValueStack;
-import freemarker.cache.*;
+import org.apache.commons.lang3.BooleanUtils;
+import org.apache.struts2.FileManager;
+import org.apache.struts2.FileManagerFactory;
+import org.apache.struts2.inject.Container;
+import org.apache.struts2.inject.Inject;
+import org.apache.struts2.util.ClassLoaderUtil;
+import org.apache.struts2.util.ValueStack;
+import freemarker.cache.ClassTemplateLoader;
+import freemarker.cache.FileTemplateLoader;
+import freemarker.cache.MultiTemplateLoader;
+import freemarker.cache.TemplateLoader;
 import freemarker.core.HTMLOutputFormat;
-import freemarker.core.OutputFormat;
 import freemarker.core.TemplateClassResolver;
-import freemarker.ext.jsp.TaglibFactory;
-import freemarker.ext.servlet.HttpRequestHashModel;
-import freemarker.ext.servlet.HttpRequestParametersHashModel;
-import freemarker.ext.servlet.HttpSessionHashModel;
-import freemarker.ext.servlet.ServletContextHashModel;
-import freemarker.template.*;
+import freemarker.ext.jakarta.jsp.TaglibFactory;
+import freemarker.ext.jakarta.servlet.HttpRequestHashModel;
+import freemarker.ext.jakarta.servlet.HttpRequestParametersHashModel;
+import freemarker.ext.jakarta.servlet.HttpSessionHashModel;
+import freemarker.ext.jakarta.servlet.ServletContextHashModel;
+import freemarker.ext.jakarta.servlet.WebappTemplateLoader;
+import freemarker.template.Configuration;
+import freemarker.template.ObjectWrapper;
+import freemarker.template.TemplateException;
+import freemarker.template.TemplateExceptionHandler;
+import freemarker.template.Version;
 import freemarker.template.utility.StringUtil;
+import jakarta.servlet.GenericServlet;
+import jakarta.servlet.RequestDispatcher;
+import jakarta.servlet.ServletContext;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.struts2.StrutsConstants;
@@ -42,16 +56,17 @@ import org.apache.struts2.views.JspSupportServlet;
 import org.apache.struts2.views.TagLibraryModelProvider;
 import org.apache.struts2.views.util.ContextUtil;
 
-import javax.servlet.GenericServlet;
-import javax.servlet.ServletContext;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-import javax.servlet.http.HttpSession;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.text.SimpleDateFormat;
-import java.util.*;
+import java.util.Calendar;
+import java.util.Collections;
+import java.util.GregorianCalendar;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Properties;
+import java.util.Set;
 
 /**
  * <p>
@@ -97,34 +112,29 @@ import java.util.*;
 public class FreemarkerManager {
 
     // copied from freemarker servlet - so that there is no dependency on it
-     public static final String INITPARAM_TEMPLATE_PATH = "TemplatePath";
-     public static final String INITPARAM_NOCACHE = "NoCache";
-     public static final String INITPARAM_CONTENT_TYPE = "ContentType";
-     public static final String DEFAULT_CONTENT_TYPE = "text/html";
-     public static final String INITPARAM_DEBUG = "Debug";
+    public static final String INITPARAM_TEMPLATE_PATH = "TemplatePath";
+    public static final String INITPARAM_NOCACHE = "NoCache";
+    public static final String INITPARAM_CONTENT_TYPE = "ContentType";
+    public static final String DEFAULT_CONTENT_TYPE = "text/html";
+    public static final String INITPARAM_DEBUG = "Debug";
 
-     public static final String KEY_REQUEST = "Request";
-     public static final String KEY_INCLUDE = "include_page";
-     public static final String KEY_REQUEST_PRIVATE = "__FreeMarkerServlet.Request__";
-     public static final String KEY_REQUEST_PARAMETERS = "RequestParameters";
-     public static final String KEY_SESSION = "Session";
-     public static final String KEY_APPLICATION = "Application";
-     public static final String KEY_APPLICATION_PRIVATE = "__FreeMarkerServlet.Application__";
-     public static final String KEY_JSP_TAGLIBS = "JspTaglibs";
+    public static final String KEY_REQUEST = "Request";
+    public static final String KEY_SESSION = "Session";
+    public static final String KEY_APPLICATION = "Application";
+    public static final String KEY_APPLICATION_PRIVATE = "__FreeMarkerServlet.Application__";
+    public static final String KEY_JSP_TAGLIBS = "JspTaglibs";
 
-     // Note these names start with dot, so they're essentially invisible from  a freemarker script.
-     private static final String ATTR_REQUEST_MODEL = ".freemarker.Request";
-     private static final String ATTR_REQUEST_PARAMETERS_MODEL = ".freemarker.RequestParameters";
-     private static final String ATTR_APPLICATION_MODEL = ".freemarker.Application";
-     private static final String ATTR_JSP_TAGLIBS_MODEL = ".freemarker.JspTaglibs";
+    // Note these names start with dot, so they're essentially invisible from  a freemarker script.
+    private static final String ATTR_REQUEST_MODEL = ".freemarker.Request";
+    private static final String ATTR_REQUEST_PARAMETERS_MODEL = ".freemarker.RequestParameters";
+    private static final String ATTR_APPLICATION_MODEL = ".freemarker.Application";
+    private static final String ATTR_JSP_TAGLIBS_MODEL = ".freemarker.JspTaglibs";
 
     // for sitemesh
     public static final String ATTR_TEMPLATE_MODEL = ".freemarker.TemplateModel";  // template model stored in request for siteMesh
 
     // for Struts
     public static final String KEY_REQUEST_PARAMETERS_STRUTS = "Parameters";
-
-    public static final String KEY_HASHMODEL_PRIVATE = "__FreeMarkerManager.Request__";
 
     public static final String EXPIRATION_DATE;
 
@@ -153,7 +163,6 @@ public class FreemarkerManager {
     public static final String KEY_EXCEPTION = "exception";
 
 
-
     protected String templatePath;
     protected boolean nocache;
     protected boolean debug;
@@ -167,7 +176,9 @@ public class FreemarkerManager {
     protected boolean cacheBeanWrapper;
     protected int mruMaxStrongSize;
     protected String templateUpdateDelay;
-    protected Map<String,TagLibraryModelProvider> tagLibraries;
+    protected boolean whitespaceStripping = true;
+    protected boolean devMode;
+    protected Map<String, TagLibraryModelProvider> tagLibraries;
 
     private FileManager fileManager;
     private FreemarkerThemeTemplateLoader themeTemplateLoader;
@@ -176,27 +187,37 @@ public class FreemarkerManager {
     public void setEncoding(String encoding) {
         this.encoding = encoding;
     }
-    
+
     @Inject(StrutsConstants.STRUTS_FREEMARKER_WRAPPER_ALT_MAP)
     public void setWrapperAltMap(String val) {
         altMapWrapper = "true".equals(val);
     }
-    
+
     @Inject(StrutsConstants.STRUTS_FREEMARKER_BEANWRAPPER_CACHE)
     public void setCacheBeanWrapper(String val) {
         cacheBeanWrapper = "true".equals(val);
     }
-    
+
     @Inject(StrutsConstants.STRUTS_FREEMARKER_MRU_MAX_STRONG_SIZE)
     public void setMruMaxStrongSize(String size) {
         mruMaxStrongSize = Integer.parseInt(size);
     }
-    
+
     @Inject(value = StrutsConstants.STRUTS_FREEMARKER_TEMPLATES_CACHE_UPDATE_DELAY, required = false)
     public void setTemplateUpdateDelay(String delay) {
-    	templateUpdateDelay = delay;
+        templateUpdateDelay = delay;
     }
-    
+
+    @Inject(value = StrutsConstants.STRUTS_FREEMARKER_WHITESPACE_STRIPPING, required = false)
+    public void setWhitespaceStripping(String whitespaceStripping) {
+        this.whitespaceStripping = BooleanUtils.toBoolean(whitespaceStripping);
+    }
+
+    @Inject(value = StrutsConstants.STRUTS_DEVMODE, required = false)
+    public void setDevMode(String devMode) {
+        this.devMode = BooleanUtils.toBoolean(devMode);
+    }
+
     @Inject
     public void setContainer(Container container) {
         Map<String, TagLibraryModelProvider> map = new HashMap<>();
@@ -281,19 +302,18 @@ public class FreemarkerManager {
         loadSettings(servletContext);
     }
 
-    /** 
-     * Sets the Freemarker Configuration's template loader with the FreemarkerThemeTemplateLoader 
+    /**
+     * Sets the Freemarker Configuration's template loader with the FreemarkerThemeTemplateLoader
      * at the top.
      *
      * @param templateLoader the template loader
-     *
      * @see org.apache.struts2.views.freemarker.FreemarkerThemeTemplateLoader
      */
     protected void configureTemplateLoader(TemplateLoader templateLoader) {
         themeTemplateLoader.init(templateLoader);
         config.setTemplateLoader(themeTemplateLoader);
     }
-    
+
     /**
      * Create the instance of the freemarker Configuration object.
      * <p>
@@ -332,8 +352,9 @@ public class FreemarkerManager {
         }
         LOG.debug("Disabled localized lookups");
         configuration.setLocalizedLookup(false);
-        LOG.debug("Enabled whitespace stripping");
-        configuration.setWhitespaceStripping(true);
+        boolean enableWhitespaceStripping = whitespaceStripping && !devMode;
+        LOG.debug("Whitespace stripping: {} (configured: {}, devMode: {})", enableWhitespaceStripping, whitespaceStripping, devMode);
+        configuration.setWhitespaceStripping(enableWhitespaceStripping);
         LOG.debug("Sets NewBuiltinClassResolver to TemplateClassResolver.SAFER_RESOLVER");
         configuration.setNewBuiltinClassResolver(TemplateClassResolver.SAFER_RESOLVER);
         LOG.debug("Sets HTML as an output format and escaping policy");
@@ -344,7 +365,7 @@ public class FreemarkerManager {
     }
 
     protected Version getFreemarkerVersion(ServletContext servletContext) {
-        Version incompatibleImprovements = Configuration.VERSION_2_3_28;
+        Version incompatibleImprovements = Configuration.VERSION_2_3_33;
 
         String incompatibleImprovementsParam = servletContext.getInitParameter("freemarker." + Configuration.INCOMPATIBLE_IMPROVEMENTS_KEY_SNAKE_CASE);
         if (incompatibleImprovementsParam != null) {
@@ -378,7 +399,7 @@ public class FreemarkerManager {
             model.put(KEY_APPLICATION, servletContextModel);
             model.putUnlistedModel(KEY_APPLICATION_PRIVATE, servletContextModel);
         }
-        model.put(KEY_JSP_TAGLIBS, (TemplateModel) servletContext.getAttribute(ATTR_JSP_TAGLIBS_MODEL));
+        model.put(KEY_JSP_TAGLIBS, servletContext.getAttribute(ATTR_JSP_TAGLIBS_MODEL));
 
         // Create hash model wrapper for session
         HttpSession session = request.getSession(false);
@@ -404,7 +425,7 @@ public class FreemarkerManager {
             request.setAttribute(ATTR_REQUEST_PARAMETERS_MODEL, reqParametersModel);
         }
         model.put(ATTR_REQUEST_PARAMETERS_MODEL, reqParametersModel);
-        model.put(KEY_REQUEST_PARAMETERS_STRUTS,reqParametersModel);
+        model.put(KEY_REQUEST_PARAMETERS_STRUTS, reqParametersModel);
 
         return model;
     }
@@ -417,56 +438,55 @@ public class FreemarkerManager {
     }
 
 
-     /**
+    /**
      * Create the template loader. The default implementation will create a
      * {@link ClassTemplateLoader} if the template path starts with "class://",
      * a {@link FileTemplateLoader} if the template path starts with "file://",
      * and a {@link WebappTemplateLoader} otherwise.
      *
      * @param servletContext the servlet path
-     * @param templatePath the template path to create a loader for
+     * @param templatePath   the template path to create a loader for
      * @return a newly created template loader
      */
     protected TemplateLoader createTemplateLoader(ServletContext servletContext, String templatePath) {
         TemplateLoader templatePathLoader = null;
 
-         try {
-             if(templatePath!=null){
-                 if (templatePath.startsWith("class://")) {
-                     // substring(7) is intentional as we "reuse" the last slash
-                     templatePathLoader = new ClassTemplateLoader(getClass(), templatePath.substring(7));
-                 } else if (templatePath.startsWith("file://")) {
-                     templatePathLoader = new FileTemplateLoader(new File(templatePath.substring(7)));
-                 }
-             }
-         } catch (IOException e) {
-             LOG.error("Invalid template path specified: {}", e.getMessage(), e);
-         }
+        try {
+            if (templatePath != null) {
+                if (templatePath.startsWith("class://")) {
+                    // substring(7) is intentional as we "reuse" the last slash
+                    templatePathLoader = new ClassTemplateLoader(getClass(), templatePath.substring(7));
+                } else if (templatePath.startsWith("file://")) {
+                    templatePathLoader = new FileTemplateLoader(new File(templatePath.substring(7)));
+                }
+            }
+        } catch (IOException e) {
+            LOG.error("Invalid template path specified: {}", e.getMessage(), e);
+        }
 
-         // presume that most apps will require the class and webapp template loader
-         // if people wish to
-         return templatePathLoader != null ?
-                 new MultiTemplateLoader(new TemplateLoader[]{
-                         templatePathLoader,
-                         new WebappTemplateLoader(servletContext),
-                         new StrutsClassTemplateLoader()
-                 })
-                 : new MultiTemplateLoader(new TemplateLoader[]{
-                 new WebappTemplateLoader(servletContext),
-                 new StrutsClassTemplateLoader()
-         });
-     }
+        // presume that most apps will require the class and webapp template loader
+        // if people wish to
+        return templatePathLoader != null ?
+                new MultiTemplateLoader(new TemplateLoader[]{
+                        templatePathLoader,
+                        new WebappTemplateLoader(servletContext),
+                        new StrutsClassTemplateLoader()
+                })
+                : new MultiTemplateLoader(new TemplateLoader[]{
+                new WebappTemplateLoader(servletContext),
+                new StrutsClassTemplateLoader()
+        });
+    }
 
 
     /**
      * Load the settings from the /freemarker.properties file on the classpath
      *
      * @param servletContext the servlet context
-     *
      * @see freemarker.template.Configuration#setSettings for the definition of valid settings
      */
     protected void loadSettings(ServletContext servletContext) {
-        try (InputStream in = fileManager.loadFile(ClassLoaderUtil.getResource("freemarker.properties", getClass()))){
+        try (InputStream in = fileManager.loadFile(ClassLoaderUtil.getResource("freemarker.properties", getClass()))) {
             if (in != null) {
                 Properties p = new Properties();
                 p.load(in);
@@ -486,23 +506,18 @@ public class FreemarkerManager {
                     addSetting(name, value);
                 }
             }
-        } catch (IOException e) {
-            LOG.error("Error while loading freemarker settings from /freemarker.properties", e);
-        } catch (TemplateException e) {
+        } catch (IOException | TemplateException e) {
             LOG.error("Error while loading freemarker settings from /freemarker.properties", e);
         }
     }
 
     public void addSetting(String name, String value) throws TemplateException {
         // Process all other init-params:
-        if (name.equals(INITPARAM_NOCACHE)) {
-            nocache = StringUtil.getYesNo(value);
-        } else if (name.equals(INITPARAM_DEBUG)) {
-            debug = StringUtil.getYesNo(value);
-        } else if (name.equals(INITPARAM_CONTENT_TYPE)) {
-            contentType = value;
-        } else {
-            config.setSetting(name, value);
+        switch (name) {
+            case INITPARAM_NOCACHE -> nocache = StringUtil.getYesNo(value);
+            case INITPARAM_DEBUG -> debug = StringUtil.getYesNo(value);
+            case INITPARAM_CONTENT_TYPE -> contentType = value;
+            default -> config.setSetting(name, value);
         }
 
         if (contentType != null && !contentTypeEvaluated) {
@@ -524,7 +539,6 @@ public class FreemarkerManager {
     }
 
 
-
     public ScopesHashModel buildTemplateModel(ValueStack stack, Object action, ServletContext servletContext, HttpServletRequest request, HttpServletResponse response, ObjectWrapper wrapper) {
         ScopesHashModel model = buildScopesHashModel(servletContext, request, response, wrapper, stack);
         populateContext(model, stack, action, request, response);
@@ -543,14 +557,14 @@ public class FreemarkerManager {
 
     protected void populateContext(ScopesHashModel model, ValueStack stack, Object action, HttpServletRequest request, HttpServletResponse response) {
         // put the same objects into the context that the velocity result uses
-        Map standard = ContextUtil.getStandardContext(stack, request, response);
+        Map<String, Object> standard = ContextUtil.getStandardContext(stack, request, response);
         model.putAll(standard);
 
         // support for JSP exception pages, exposing the servlet or JSP exception
-        Throwable exception = (Throwable) request.getAttribute("javax.servlet.error.exception");
+        Throwable exception = (Throwable) request.getAttribute(RequestDispatcher.ERROR_EXCEPTION);
 
         if (exception == null) {
-            exception = (Throwable) request.getAttribute("javax.servlet.error.JspException");
+            exception = (Throwable) request.getAttribute("jakarta.servlet.error.JspException");
         }
 
         if (exception != null) {

@@ -1,4 +1,22 @@
 #!groovy
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements. See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership. The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License. You may obtain a copy of the License at
+ *
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
 
 pipeline {
   agent none
@@ -25,6 +43,36 @@ pipeline {
         }
       }
     }
+    stage('JDK 21') {
+      agent {
+        label 'ubuntu'
+      }
+      tools {
+        jdk 'jdk_21_latest'
+        maven 'maven_3_latest'
+      }
+      environment {
+        MAVEN_OPTS = "-Xmx1024m"
+      }
+      stages {
+        stage('Test') {
+          steps {
+            sh './mvnw -B -DskipAssembly verify'
+          }
+          post {
+            always {
+              junit(testResults: '**/surefire-reports/*.xml', allowEmptyResults: true)
+              junit(testResults: '**/failsafe-reports/*.xml', allowEmptyResults: true)
+            }
+          }
+        }
+      }
+      post {
+        always {
+          cleanWs deleteDirs: true, patterns: [[pattern: '**/target/**', type: 'INCLUDE']]
+        }
+      }
+    }
     stage('JDK 17') {
       agent {
         label 'ubuntu'
@@ -34,98 +82,17 @@ pipeline {
         maven 'maven_3_latest'
       }
       environment {
-        MAVEN_OPTS = "-Xmx1024m"
+        MAVEN_OPTS = "-Xmx2048m"
       }
       stages {
-        stage('Build') {
+        stage('Install') {
           steps {
-            sh './mvnw -B clean install -DskipTests -DskipAssembly'
+            sh './mvnw -B install -DskipTests -DskipAssembly'
           }
         }
         stage('Test') {
           steps {
-            sh './mvnw -B test'
-          }
-          post {
-            always {
-              junit(testResults: '**/surefire-reports/*.xml', allowEmptyResults: true)
-              junit(testResults: '**/failsafe-reports/*.xml', allowEmptyResults: true)
-            }
-          }
-        }
-      }
-      post {
-        always {
-          cleanWs deleteDirs: true, patterns: [[pattern: '**/target/**', type: 'INCLUDE']]
-        }
-      }
-    }
-    stage('JDK 11') {
-      agent {
-        label 'ubuntu'
-      }
-      tools {
-        jdk 'jdk_11_latest'
-        maven 'maven_3_latest'
-      }
-      environment {
-        MAVEN_OPTS = "-Xmx1024m"
-      }
-      stages {
-        stage('Build') {
-          steps {
-            sh './mvnw -B clean install -DskipTests -DskipAssembly'
-          }
-        }
-        stage('Test') {
-          steps {
-            sh './mvnw -B test'
-          }
-          post {
-            always {
-              junit(testResults: '**/surefire-reports/*.xml', allowEmptyResults: true)
-              junit(testResults: '**/failsafe-reports/*.xml', allowEmptyResults: true)
-            }
-          }
-        }
-        stage('Code Quality') {
-          when {
-            branch 'master'
-          }
-          steps {
-            withCredentials([string(credentialsId: 'asf-struts-sonarcloud', variable: 'SONARCLOUD_TOKEN')]) {
-              sh './mvnw sonar:sonar -DskipAssembly -Dsonar.login=${SONARCLOUD_TOKEN}'
-            }
-          }
-        }
-      }
-      post {
-        always {
-          cleanWs deleteDirs: true, patterns: [[pattern: '**/target/**', type: 'INCLUDE']]
-        }
-      }
-    }
-    stage('JDK 8') {
-      agent {
-        label 'ubuntu'
-      }
-      tools {
-        jdk 'jdk_1.8_latest'
-        maven 'maven_3_latest'
-      }
-      environment {
-        MAVEN_OPTS = "-Xmx1024m"
-      }
-      stages {
-        stage('Build') {
-          steps {
-            sh './mvnw -B clean install -DskipTests -DskipAssembly'
-          }
-        }
-        stage('Test') {
-          steps {
-            sh './mvnw -B test'
-            // step([$class: 'JiraIssueUpdater', issueSelector: [$class: 'DefaultIssueSelector'], scm: scm])
+            sh './mvnw -B verify -Pcoverage -DskipAssembly'
           }
           post {
             always {
@@ -136,7 +103,10 @@ pipeline {
         }
         stage('Build Source & JavaDoc') {
           when {
-            branch 'master'
+            anyOf {
+              branch 'main'
+              branch 'release/struts-6-8-x'
+            }
           }
           steps {
             dir("local-snapshots-dir/") {
@@ -147,7 +117,10 @@ pipeline {
         }
         stage('Deploy Snapshot') {
           when {
-            branch 'master'
+            anyOf {
+              branch 'main'
+              branch 'release/struts-6-8-x'
+            }
           }
           steps {
             withCredentials([file(credentialsId: 'lukaszlenart-repository-access-token', variable: 'CUSTOM_SETTINGS')]) {
@@ -157,9 +130,13 @@ pipeline {
         }
         stage('Upload nightlies') {
           when {
-            branch 'master'
+            anyOf {
+              branch 'main'
+              branch 'release/struts-6-8-x'
+            }
           }
           steps {
+            sh './mvnw -B package -DskipTests'
             sshPublisher(publishers: [
                 sshPublisherDesc(
                     configName: 'Nightlies',
@@ -188,7 +165,7 @@ pipeline {
     failure {
       script {
         emailext(
-            to: "dev@struts.apache.org",
+            to: "notifications@struts.apache.org",
             recipientProviders: [[$class: 'DevelopersRecipientProvider']],
             from: "Mr. Jenkins <jenkins@builds.apache.org>",
             subject: "Jenkins job ${env.JOB_NAME}#${env.BUILD_NUMBER} failed",
@@ -211,7 +188,7 @@ Director of Continuous Integration
     unstable {
       script {
         emailext(
-            to: "dev@struts.apache.org",
+            to: "notifications@struts.apache.org",
             recipientProviders: [[$class: 'DevelopersRecipientProvider']],
             from: "Mr. Jenkins <jenkins@builds.apache.org>",
             subject: "Jenkins job ${env.JOB_NAME}#${env.BUILD_NUMBER} unstable",
@@ -234,7 +211,7 @@ Director of Continuous Integration
     fixed {
       script {
         emailext(
-            to: "dev@struts.apache.org",
+            to: "notifications@struts.apache.org",
             recipientProviders: [[$class: 'DevelopersRecipientProvider']],
             from: 'Mr. Jenkins <jenkins@builds.apache.org>',
             subject: "Jenkins job ${env.JOB_NAME}#${env.BUILD_NUMBER} back to normal",

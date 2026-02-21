@@ -20,9 +20,11 @@
  */
 package org.apache.struts2.views.java.simple;
 
-import com.opensymphony.xwork2.security.DefaultNotExcludedAcceptedPatternsChecker;
+import org.apache.struts2.security.DefaultNotExcludedAcceptedPatternsChecker;
 import org.apache.struts2.components.Checkbox;
 import org.apache.struts2.components.UIBean;
+import org.apache.struts2.interceptor.csp.CspNonceSource;
+import org.apache.struts2.interceptor.csp.StrutsCspNonceReader;
 
 public class CheckboxTest extends AbstractCommonAttributesTest {
     private Checkbox tag;
@@ -38,7 +40,7 @@ public class CheckboxTest extends AbstractCommonAttributesTest {
         tag.setFieldValue("xyz");
 
         tag.evaluateParams();
-        map.putAll(tag.getParameters());
+        map.putAll(tag.getAttributes());
         theme.renderTag(getTagName(), context);
         String output = writer.getBuffer().toString();
         String expected = s("<input type='checkbox' name='name_' value='xyz' tabindex='1' id='id_' class='class' style='style' title='title'></input>");
@@ -57,10 +59,12 @@ public class CheckboxTest extends AbstractCommonAttributesTest {
         tag.setSubmitUnchecked("true");
 
         tag.evaluateParams();
-        map.putAll(tag.getParameters());
+        map.putAll(tag.getAttributes());
         theme.renderTag(getTagName(), context);
         String output = writer.getBuffer().toString();
-        String expected = s("<input type='checkbox' name='name_' value='xyz' disabled='disabled' tabindex='1' id='id_' class='class' style='style' title='title'></input><input type='hidden' id='__checkbox_id_' name='__checkbox_name_' value='__checkbox_xyz' disabled='disabled'></input>");
+        // Note: The hidden field's value should be the same as fieldValue, not prefixed with __checkbox_
+        // This matches the FreeMarker template behavior in simple/checkbox.ftl
+        String expected = s("<input type='checkbox' name='name_' value='xyz' disabled='disabled' tabindex='1' id='id_' class='class' style='style' title='title'></input><input type='hidden' id='__checkbox_id_' name='__checkbox_name_' value='xyz' disabled='disabled'></input>");
         assertEquals(expected, output);
     }
 
@@ -69,7 +73,7 @@ public class CheckboxTest extends AbstractCommonAttributesTest {
         tag.setValue("%{someValue}");
 
         tag.evaluateParams();
-        map.putAll(tag.getParameters());
+        map.putAll(tag.getAttributes());
         theme.renderTag(getTagName(), context);
         String output = writer.getBuffer().toString();
         String expected = s("<input type='checkbox' name='name_' value='true' checked='checked' id='name_'></input>");
@@ -88,6 +92,7 @@ public class CheckboxTest extends AbstractCommonAttributesTest {
         super.setUp();
         tag = new Checkbox(stack, request, response);
         tag.setNotExcludedAcceptedPatterns(new DefaultNotExcludedAcceptedPatternsChecker());
+        this.tag.setCspNonceReader(new StrutsCspNonceReader(CspNonceSource.SESSION.name()));
     }
 
     @Override

@@ -22,13 +22,14 @@ package org.apache.struts2.views.java.simple;
 
 import org.apache.struts2.components.File;
 import org.apache.struts2.components.UIBean;
+import org.apache.struts2.interceptor.csp.CspNonceSource;
+import org.apache.struts2.interceptor.csp.StrutsCspNonceReader;
 
 public class FileTest extends AbstractCommonAttributesTest {
     private File tag;
 
     public void testRenderTextField() {
         tag.setName("name");
-        tag.setValue("val1");
         tag.setSize("10");
         tag.setDisabled("true");
         tag.setAccept("accept_");
@@ -40,10 +41,10 @@ public class FileTest extends AbstractCommonAttributesTest {
 
 
         tag.evaluateParams();
-        map.putAll(tag.getParameters());
+        map.putAll(tag.getAttributes());
         theme.renderTag(getTagName(), context);
         String output = writer.getBuffer().toString();
-        String expected = s("<input name='name' type='file' size='10' value='val1' disabled='disabled' accept='accept_' tabindex='1' id='id1' class='class1' style='style1' title='title'></input>");
+        String expected = s("<input name='name' type='file' size='10' disabled='disabled' accept='accept_' tabindex='1' id='id1' class='class1' style='style1' title='title'></input>");
         assertEquals(expected, output);
     }
 
@@ -51,6 +52,7 @@ public class FileTest extends AbstractCommonAttributesTest {
     protected void setUp() throws Exception {
         super.setUp();
         this.tag = new File(stack, request, response);
+        this.tag.setCspNonceReader(new StrutsCspNonceReader(CspNonceSource.SESSION.name()));
     }
 
     @Override

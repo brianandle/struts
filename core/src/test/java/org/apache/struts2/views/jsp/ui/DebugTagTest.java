@@ -18,18 +18,9 @@
  */
 package org.apache.struts2.views.jsp.ui;
 
-import com.opensymphony.xwork2.ActionContext;
-import com.opensymphony.xwork2.config.ConfigurationException;
-import com.opensymphony.xwork2.inject.ContainerBuilder;
-import com.opensymphony.xwork2.test.StubConfigurationProvider;
-import com.opensymphony.xwork2.util.location.LocatableProperties;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.struts2.StrutsConstants;
 import org.apache.struts2.dispatcher.PrepareOperations;
 import org.apache.struts2.views.jsp.AbstractUITagTest;
-
-import java.util.HashMap;
-import java.util.Map;
 
 /**
  * Test case for {@link org.apache.struts2.components.Debug}.
@@ -63,7 +54,7 @@ public class DebugTagTest extends AbstractUITagTest {
         freshTag.setPageContext(pageContext);
         // DebugTag has no additional state, so it compares as equal with the default tag clear state as well.
         assertTrue("Tag state after doEndTag() under default tag clear state is inequal to new Tag with pageContext/parent set.  " +
-                "May indicate that clearTagStateForTagPoolingServers() calls are not working properly.",
+                        "May indicate that clearTagStateForTagPoolingServers() calls are not working properly.",
                 strutsBodyTagsAreReflectionEqual(tag, freshTag));
     }
 
@@ -86,7 +77,7 @@ public class DebugTagTest extends AbstractUITagTest {
         freshTag.setPerformClearTagStateForTagPoolingServers(true);
         freshTag.setPageContext(pageContext);
         assertTrue("Tag state after doEndTag() and explicit tag state clearing is inequal to new Tag with pageContext/parent set.  " +
-                "May indicate that clearTagStateForTagPoolingServers() calls are not working properly.",
+                        "May indicate that clearTagStateForTagPoolingServers() calls are not working properly.",
                 strutsBodyTagsAreReflectionEqual(tag, freshTag));
     }
 
@@ -102,7 +93,7 @@ public class DebugTagTest extends AbstractUITagTest {
         freshTag.setPageContext(pageContext);
         // DebugTag has no additional state, so it compares as equal with the default tag clear state as well.
         assertTrue("Tag state after doEndTag() under default tag clear state is inequal to new Tag with pageContext/parent set.  " +
-                "May indicate that clearTagStateForTagPoolingServers() calls are not working properly.",
+                        "May indicate that clearTagStateForTagPoolingServers() calls are not working properly.",
                 strutsBodyTagsAreReflectionEqual(tag, freshTag));
     }
 
@@ -120,7 +111,7 @@ public class DebugTagTest extends AbstractUITagTest {
         freshTag.setPerformClearTagStateForTagPoolingServers(true);
         freshTag.setPageContext(pageContext);
         assertTrue("Tag state after doEndTag() and explicit tag state clearing is inequal to new Tag with pageContext/parent set.  " +
-                "May indicate that clearTagStateForTagPoolingServers() calls are not working properly.",
+                        "May indicate that clearTagStateForTagPoolingServers() calls are not working properly.",
                 strutsBodyTagsAreReflectionEqual(tag, freshTag));
     }
 
@@ -139,7 +130,7 @@ public class DebugTagTest extends AbstractUITagTest {
         freshTag.setPageContext(pageContext);
         // DebugTag has no additional state, so it compares as equal with the default tag clear state as well.
         assertTrue("Tag state after doEndTag() under default tag clear state is inequal to new Tag with pageContext/parent set.  " +
-                "May indicate that clearTagStateForTagPoolingServers() calls are not working properly.",
+                        "May indicate that clearTagStateForTagPoolingServers() calls are not working properly.",
                 strutsBodyTagsAreReflectionEqual(tag, freshTag));
 
         PrepareOperations.clearDevModeOverride();  // Clear DevMode override. Avoid ThreadLocal side-effects if test thread re-used.
@@ -162,7 +153,7 @@ public class DebugTagTest extends AbstractUITagTest {
         freshTag.setPerformClearTagStateForTagPoolingServers(true);
         freshTag.setPageContext(pageContext);
         assertTrue("Tag state after doEndTag() and explicit tag state clearing is inequal to new Tag with pageContext/parent set.  " +
-                "May indicate that clearTagStateForTagPoolingServers() calls are not working properly.",
+                        "May indicate that clearTagStateForTagPoolingServers() calls are not working properly.",
                 strutsBodyTagsAreReflectionEqual(tag, freshTag));
 
         PrepareOperations.clearDevModeOverride();  // Clear DevMode override. Avoid ThreadLocal side-effects if test thread re-used.
@@ -181,7 +172,7 @@ public class DebugTagTest extends AbstractUITagTest {
         freshTag.setPageContext(pageContext);
         // DebugTag has no additional state, so it compares as equal with the default tag clear state as well.
         assertTrue("Tag state after doEndTag() under default tag clear state is inequal to new Tag with pageContext/parent set.  " +
-                "May indicate that clearTagStateForTagPoolingServers() calls are not working properly.",
+                        "May indicate that clearTagStateForTagPoolingServers() calls are not working properly.",
                 strutsBodyTagsAreReflectionEqual(tag, freshTag));
 
         PrepareOperations.clearDevModeOverride();  // Clear DevMode override. Avoid ThreadLocal side-effects if test thread re-used.
@@ -202,38 +193,10 @@ public class DebugTagTest extends AbstractUITagTest {
         freshTag.setPerformClearTagStateForTagPoolingServers(true);
         freshTag.setPageContext(pageContext);
         assertTrue("Tag state after doEndTag() and explicit tag state clearing is inequal to new Tag with pageContext/parent set.  " +
-                "May indicate that clearTagStateForTagPoolingServers() calls are not working properly.",
+                        "May indicate that clearTagStateForTagPoolingServers() calls are not working properly.",
                 strutsBodyTagsAreReflectionEqual(tag, freshTag));
 
         PrepareOperations.clearDevModeOverride();  // Clear DevMode override. Avoid ThreadLocal side-effects if test thread re-used.
     }
 
-    private void setDevMode(final boolean devMode) {
-        setStrutsConstant(new HashMap<String, String>() {{
-            put(StrutsConstants.STRUTS_DEVMODE, Boolean.toString(devMode));
-        }});
-    }
-
-    /**
-     * Overwrite the Struts Constant and reload container
-     */
-    private void setStrutsConstant(final Map<String, String> overwritePropeties) {
-        configurationManager.addContainerProvider(new StubConfigurationProvider() {
-            @Override
-            public boolean needsReload() {
-                return true;
-            }
-
-            @Override
-            public void register(ContainerBuilder builder, LocatableProperties props) throws ConfigurationException {
-                for (Map.Entry<String, String> stringStringEntry : overwritePropeties.entrySet()) {
-                    props.setProperty(stringStringEntry.getKey(), stringStringEntry.getValue(), null);
-                }
-            }
-        });
-
-        configurationManager.reload();
-        container = configurationManager.getConfiguration().getContainer();
-        stack.getActionContext().withContainer(container);
-    }
 }

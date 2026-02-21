@@ -22,6 +22,8 @@ package org.apache.struts2.views.java.simple;
 
 import org.apache.struts2.components.Select;
 import org.apache.struts2.components.UIBean;
+import org.apache.struts2.interceptor.csp.CspNonceSource;
+import org.apache.struts2.interceptor.csp.StrutsCspNonceReader;
 
 import java.util.Arrays;
 import java.util.HashMap;
@@ -42,7 +44,7 @@ public class SelectTest extends AbstractCommonAttributesTest {
         tag.setTitle("title");
 
         tag.evaluateParams();
-        map.putAll(tag.getParameters());
+        map.putAll(tag.getAttributes());
         theme.renderTag(getTagName(), context);
         String output = writer.getBuffer().toString();
         String expected = s("<select name='name_' size='10' disabled='disabled' tabindex='1' id='id_' class='class' style='style' title='title'></select>");
@@ -55,7 +57,7 @@ public class SelectTest extends AbstractCommonAttributesTest {
         tag.setHeaderValue("%{'val'}");
 
         tag.evaluateParams();
-        map.putAll(tag.getParameters());
+        map.putAll(tag.getAttributes());
         theme.renderTag(getTagName(), context);
         String output = writer.getBuffer().toString();
         String expected = s("<select name=''><option value='key0'>val</option></select>");
@@ -68,7 +70,7 @@ public class SelectTest extends AbstractCommonAttributesTest {
         tag.setListValue("stringField");
 
         tag.evaluateParams();
-        map.putAll(tag.getParameters());
+        map.putAll(tag.getAttributes());
         theme.renderTag(getTagName(), context);
         String output = writer.getBuffer().toString();
         String expected = s("<select name=''><option value='1'>val</option></select>");
@@ -79,7 +81,7 @@ public class SelectTest extends AbstractCommonAttributesTest {
         tag.setList("%{#{'key0' : 'val'}}");
 
         tag.evaluateParams();
-        map.putAll(tag.getParameters());
+        map.putAll(tag.getAttributes());
         theme.renderTag(getTagName(), context);
         String output = writer.getBuffer().toString();
         String expected = s("<select name=''><option value='key0'>val</option></select>");
@@ -93,7 +95,7 @@ public class SelectTest extends AbstractCommonAttributesTest {
         tag.setValue("%{'1'}");
 
         tag.evaluateParams();
-        map.putAll(tag.getParameters());
+        map.putAll(tag.getAttributes());
         theme.renderTag(getTagName(), context);
         String output = writer.getBuffer().toString();
         String expected = s("<select name='' value='1'><option value='1' selected='selected'>val</option></select>");
@@ -114,6 +116,7 @@ public class SelectTest extends AbstractCommonAttributesTest {
     protected void setUp() throws Exception {
         super.setUp();
         this.tag = new Select(stack, request, response);
+        this.tag.setCspNonceReader(new StrutsCspNonceReader(CspNonceSource.SESSION.name()));
     }
 
     @Override

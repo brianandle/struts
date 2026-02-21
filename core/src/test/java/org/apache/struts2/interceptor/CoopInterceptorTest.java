@@ -18,8 +18,8 @@
  */
 package org.apache.struts2.interceptor;
 
-import com.opensymphony.xwork2.ActionContext;
-import com.opensymphony.xwork2.mock.MockActionInvocation;
+import org.apache.struts2.ActionContext;
+import org.apache.struts2.mock.MockActionInvocation;
 import org.apache.logging.log4j.util.Strings;
 import org.apache.struts2.ServletActionContext;
 import org.apache.struts2.StrutsInternalTestCase;
@@ -73,15 +73,6 @@ public class CoopInterceptorTest extends StrutsInternalTestCase {
         } catch (IllegalArgumentException e){
             assert(true);
         }
-    }
-
-    public void testDisabled() throws Exception {
-        interceptor.setDisabled("true");
-
-        interceptor.intercept(mai);
-
-        String header = response.getHeader(COOP_HEADER);
-        assertTrue("COOP is not disabled", Strings.isEmpty(header));
     }
 
     @Override

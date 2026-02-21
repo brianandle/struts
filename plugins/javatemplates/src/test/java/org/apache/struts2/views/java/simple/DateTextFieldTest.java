@@ -22,6 +22,8 @@ package org.apache.struts2.views.java.simple;
 
 import org.apache.struts2.components.DateTextField;
 import org.apache.struts2.components.UIBean;
+import org.apache.struts2.interceptor.csp.CspNonceSource;
+import org.apache.struts2.interceptor.csp.StrutsCspNonceReader;
 
 public class DateTextFieldTest extends AbstractCommonAttributesTest {
 
@@ -33,7 +35,7 @@ public class DateTextFieldTest extends AbstractCommonAttributesTest {
         tag.setFormat("yyyy-MM-dd");
 
         tag.evaluateParams();
-        map.putAll(tag.getParameters());
+        map.putAll(tag.getAttributes());
         theme.renderTag(getTagName(), context);
         String output = writer.getBuffer().toString();
         String expected = s("<div id='id'>" +
@@ -42,10 +44,10 @@ public class DateTextFieldTest extends AbstractCommonAttributesTest {
         		"-<input type='text' class='date_day' size='2' maxlength='2' id='__day_id' name='__day_name'></input></div>");
         assertEquals(expected, output);
     }
-    
+
     @Override
     public void testRenderTextFieldScriptingAttrs() throws Exception { }
-    
+
     @Override
     public void testRenderTextFieldCommonAttrs() throws Exception { }
 
@@ -56,6 +58,7 @@ public class DateTextFieldTest extends AbstractCommonAttributesTest {
     protected void setUp() throws Exception {
         super.setUp();
         this.tag = new DateTextField(stack, request, response);
+        this.tag.setCspNonceReader(new StrutsCspNonceReader(CspNonceSource.SESSION.name()));
     }
 
     @Override

@@ -18,9 +18,9 @@
  */
 package org.apache.struts2.components;
 
-import com.opensymphony.xwork2.TextProvider;
-import com.opensymphony.xwork2.inject.Inject;
-import com.opensymphony.xwork2.util.ValueStack;
+import org.apache.struts2.text.TextProvider;
+import org.apache.struts2.inject.Inject;
+import org.apache.struts2.util.ValueStack;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.struts2.components.date.DateFormatter;
@@ -32,6 +32,7 @@ import java.io.Writer;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
@@ -294,7 +295,9 @@ public class Date extends ContextBean {
         // find the name on the valueStack
         Object dateObject = findValue(name);
         if (dateObject instanceof java.sql.Date) {
-            date = ((java.sql.Date) dateObject).toLocalDate().atStartOfDay(tz);
+            date = ((java.sql.Date) dateObject).toLocalDate().atTime(LocalTime.now(tz)).atZone(tz);
+        } else if (dateObject instanceof java.sql.Time) {
+            date = ((java.sql.Time) dateObject).toLocalTime().atDate(ZonedDateTime.now(tz).toLocalDate()).atZone(tz);
         } else if (dateObject instanceof java.util.Date) {
             date = ((java.util.Date) dateObject).toInstant().atZone(tz);
         } else if (dateObject instanceof Calendar) {
@@ -305,6 +308,8 @@ public class Date extends ContextBean {
             date = ((LocalDateTime) dateObject).atZone(tz);
         } else if (dateObject instanceof LocalDate) {
             date = ((LocalDate) dateObject).atStartOfDay(tz);
+        } else if (dateObject instanceof LocalTime) {
+            date = ((LocalTime) dateObject).atDate(ZonedDateTime.now(tz).toLocalDate()).atZone(tz);
         } else if (dateObject instanceof Instant) {
             date = ((Instant) dateObject).atZone(tz);
         } else {

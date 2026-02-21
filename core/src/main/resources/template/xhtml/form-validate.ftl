@@ -18,11 +18,11 @@
  * under the License.
  */
 -->
-<#if parameters.validate!false == true>
-	<script type="text/javascript" src="${base}${parameters.staticContentPath}/xhtml/validation.js" <#include "/${parameters.templateDir}/simple/nonce.ftl" /> ></script>
-	<#if parameters.onsubmit??>
-		${tag.addParameter('onsubmit', "${parameters.onsubmit}; return validateForm_${parameters.escapedId}();")}
-	<#else>
-		${tag.addParameter('onsubmit', "return validateForm_${parameters.escapedId}();")}
-	</#if>
+<#if attributes.validate!false == true>
+<@s.script src="${base}${attributes.staticContentPath}/xhtml/validation.js" />
+<#if attributes.onsubmit??>
+    ${tag.addParameter('onsubmit', "${attributes.onsubmit}; return validateForm_${attributes.escapedId}();")}
+<#else>
+    ${tag.addParameter('onsubmit', "return validateForm_${attributes.escapedId}();")}
+</#if>
 </#if>

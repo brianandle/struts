@@ -22,6 +22,8 @@ package org.apache.struts2.views.java.simple;
 
 import org.apache.struts2.components.FieldError;
 import org.apache.struts2.components.UIBean;
+import org.apache.struts2.interceptor.csp.CspNonceSource;
+import org.apache.struts2.interceptor.csp.StrutsCspNonceReader;
 
 import java.util.*;
 
@@ -35,7 +37,7 @@ public class FieldErrorTest extends AbstractTest {
         tag.setCssStyle("style");
 
         tag.evaluateParams();
-        map.putAll(tag.getParameters());
+        map.putAll(tag.getAttributes());
         theme.renderTag(getTagName(), context);
         String output = writer.getBuffer().toString();
         String expected = s("<ul style='style' class='class'><li><span>not good</span></li><li><span>bad</span></li><li><span>bad to the bone</span></li></ul>");
@@ -46,7 +48,7 @@ public class FieldErrorTest extends AbstractTest {
         tag.setCssStyle("style");
 
         tag.evaluateParams();
-        map.putAll(tag.getParameters());
+        map.putAll(tag.getAttributes());
         theme.renderTag(getTagName(), context);
         String output = writer.getBuffer().toString();
         String expected = s("<ul style='style' class='errorMessage'><li><span>not good</span></li><li><span>bad</span></li><li><span>bad to the bone</span></li></ul>");
@@ -57,7 +59,7 @@ public class FieldErrorTest extends AbstractTest {
         this.fieldNames.clear();
 
         tag.evaluateParams();
-        map.putAll(tag.getParameters());
+        map.putAll(tag.getAttributes());
         theme.renderTag(getTagName(), context);
         String output = writer.getBuffer().toString();
         String expected = s("<ul class='errorMessage'><li><span>not good</span></li><li><span>bad</span></li><li><span>bad to the bone</span></li></ul>");
@@ -67,7 +69,7 @@ public class FieldErrorTest extends AbstractTest {
     public void testRenderFieldErrorWithoutOneFieldName() {
         tag.setFieldName("field1");
         tag.evaluateParams();
-        map.putAll(tag.getParameters());
+        map.putAll(tag.getAttributes());
         theme.renderTag(getTagName(), context);
         String output = writer.getBuffer().toString();
         String expected = s("<ul class='errorMessage'><li><span>not good</span></li><li><span>bad</span></li></ul>");
@@ -79,7 +81,7 @@ public class FieldErrorTest extends AbstractTest {
         this.fieldNames.clear();
 
         tag.evaluateParams();
-        map.putAll(tag.getParameters());
+        map.putAll(tag.getAttributes());
         theme.renderTag(getTagName(), context);
         String output = writer.getBuffer().toString();
         assertEquals("", output);
@@ -100,6 +102,7 @@ public class FieldErrorTest extends AbstractTest {
         //errors are needed to setup stack
         super.setUp();
         this.tag = new FieldError(stack, request, response);
+        this.tag.setCspNonceReader(new StrutsCspNonceReader(CspNonceSource.SESSION.name()));
     }
 
     @Override

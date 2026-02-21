@@ -18,22 +18,23 @@
  */
 package org.apache.struts2.result;
 
-import com.opensymphony.xwork2.ActionInvocation;
-import com.opensymphony.xwork2.inject.Inject;
-import com.opensymphony.xwork2.security.NotExcludedAcceptedPatternsChecker;
+import jakarta.servlet.http.HttpServletResponse;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.apache.struts2.ActionInvocation;
+import org.apache.struts2.inject.Inject;
+import org.apache.struts2.security.NotExcludedAcceptedPatternsChecker;
 
-import javax.servlet.http.HttpServletResponse;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.Serial;
 
 /**
  * A custom Result type for sending raw data (via an InputStream) directly to the
  * HttpServletResponse. Very useful for allowing users to download content.
- *
  * <b>This result type takes the following parameters:</b>
- *
  * <ul>
  * <li><b>contentType</b> - the stream mime-type as sent to the web browser
  * (default = <code>text/plain</code>).</li>
@@ -47,7 +48,7 @@ import java.io.OutputStream;
  * <li><b>bufferSize</b> - the size of the buffer to copy from input to output
  * (default = <code>1024</code>).</li>
  * <li><b>allowCaching</b> if set to 'false' it will set the headers 'Pragma' and 'Cache-Control'
- * to 'no-cahce', and prevent client from caching the content. (default = <code>true</code>)
+ * to 'no-cache', and prevent client from caching the content. (default = <code>true</code>)
  * <li><b>contentCharSet</b> if set to a string, ';charset=value' will be added to the
  * content-type header, where value is the string set. If set to an expression, the result
  * of evaluating the expression will be used. If not set, then no charset will be set on
@@ -72,19 +73,25 @@ import java.io.OutputStream;
  */
 public class StreamResult extends StrutsResultSupport {
 
+    @Serial
     private static final long serialVersionUID = -1468409635999059850L;
 
     protected static final Logger LOG = LogManager.getLogger(StreamResult.class);
 
     public static final String DEFAULT_PARAM = "inputName";
 
-    protected String contentType = "text/plain";
+    public static final int DEFAULT_BUFFER_SIZE = 1024;
+    public static final String DEFAULT_CONTENT_TYPE = "text/plain";
+    public static final String DEFAULT_CONTENT_DISPOSITION = "inline";
+    public static final String DEFAULT_INPUT_NAME = "inputStream";
+
+    protected String contentType = DEFAULT_CONTENT_TYPE;
     protected String contentLength;
-    protected String contentDisposition = "inline";
+    protected String contentDisposition = DEFAULT_CONTENT_DISPOSITION;
     protected String contentCharSet;
-    protected String inputName = "inputStream";
+    protected String inputName = DEFAULT_INPUT_NAME;
     protected InputStream inputStream;
-    protected int bufferSize = 1024;
+    protected int bufferSize = DEFAULT_BUFFER_SIZE;
     protected boolean allowCaching = true;
 
     private NotExcludedAcceptedPatternsChecker notExcludedAcceptedPatterns;
@@ -124,7 +131,7 @@ public class StreamResult extends StrutsResultSupport {
      * @return Returns the bufferSize.
      */
     public int getBufferSize() {
-        return (bufferSize);
+        return bufferSize;
     }
 
     /**
@@ -138,7 +145,7 @@ public class StreamResult extends StrutsResultSupport {
      * @return Returns the contentType.
      */
     public String getContentType() {
-        return (contentType);
+        return contentType;
     }
 
     /**
@@ -194,7 +201,7 @@ public class StreamResult extends StrutsResultSupport {
      * @return Returns the inputName.
      */
     public String getInputName() {
-        return (inputName);
+        return inputName;
     }
 
     /**
@@ -205,89 +212,135 @@ public class StreamResult extends StrutsResultSupport {
     }
 
     /**
-     * @see StrutsResultSupport#doExecute(java.lang.String, com.opensymphony.xwork2.ActionInvocation)
+     * @see StrutsResultSupport#doExecute(java.lang.String, ActionInvocation)
      */
+    @Override
     protected void doExecute(String finalLocation, ActionInvocation invocation) throws Exception {
-        LOG.debug("Find the Response in context");
+        resolveInputStream(invocation);
+        HttpServletResponse response = invocation.getInvocationContext().getServletResponse();
+        
+        applyResponseHeaders(response, invocation);
+        applyContentLength(response, invocation);
 
-        OutputStream oOutput = null;
-
-        try {
-            String parsedInputName = conditionalParse(inputName, invocation);
-            boolean evaluated = parsedInputName != null && !parsedInputName.equals(inputName);
-            boolean reevaluate = !evaluated || isAcceptableExpression(parsedInputName);
-            if (inputStream == null && reevaluate) {
-                LOG.debug("Find the inputstream from the invocation variable stack");
-                inputStream = (InputStream) invocation.getStack().findValue(parsedInputName);
-            }
-
-            if (inputStream == null) {
-                String msg = ("Can not find a java.io.InputStream with the name [" + parsedInputName + "] in the invocation stack. " +
-                    "Check the <param name=\"inputName\"> tag specified for this action is correct, not excluded and accepted.");
-                LOG.error(msg);
-                throw new IllegalArgumentException(msg);
-            }
-
-
-            HttpServletResponse oResponse = invocation.getInvocationContext().getServletResponse();
-
-            LOG.debug("Set the content type: {};charset{}", contentType, contentCharSet);
-            if (contentCharSet != null && !contentCharSet.equals("")) {
-                oResponse.setContentType(conditionalParse(contentType, invocation) + ";charset=" + conditionalParse(contentCharSet, invocation));
-            } else {
-                oResponse.setContentType(conditionalParse(contentType, invocation));
-            }
-
-            LOG.debug("Set the content length: {}", contentLength);
-            if (contentLength != null) {
-                String translatedContentLength = conditionalParse(contentLength, invocation);
-                int contentLengthAsInt;
-                try {
-                    contentLengthAsInt = Integer.parseInt(translatedContentLength);
-                    if (contentLengthAsInt >= 0) {
-                        oResponse.setContentLength(contentLengthAsInt);
-                    }
-                } catch (NumberFormatException e) {
-                    LOG.warn("failed to recognize {} as a number, contentLength header will not be set",
-                            translatedContentLength, e);
-                }
-            }
-
-            LOG.debug("Set the content-disposition: {}", contentDisposition);
-            if (contentDisposition != null) {
-                oResponse.addHeader("Content-Disposition", conditionalParse(contentDisposition, invocation));
-            }
-
-            LOG.debug("Set the cache control headers if necessary: {}", allowCaching);
-            if (!allowCaching) {
-                oResponse.addHeader("Pragma", "no-cache");
-                oResponse.addHeader("Cache-Control", "no-cache");
-            }
-
-            oOutput = oResponse.getOutputStream();
-
-            LOG.debug("Streaming result [{}] type=[{}] length=[{}] content-disposition=[{}] charset=[{}]",
+        LOG.debug("Streaming result [{}] of type [{}], length [{}], content-disposition [{}] with charset [{}]",
                 inputName, contentType, contentLength, contentDisposition, contentCharSet);
 
-            LOG.debug("Streaming to output buffer +++ START +++");
-            byte[] oBuff = new byte[bufferSize];
-            int iSize;
-            while (-1 != (iSize = inputStream.read(oBuff))) {
-                LOG.debug("Sending stream ... {}", iSize);
-                oOutput.write(oBuff, 0, iSize);
-            }
-            LOG.debug("Streaming to output buffer +++ END +++");
-
-            // Flush
-            oOutput.flush();
-        } finally {
-            if (inputStream != null) {
-                inputStream.close();
-            }
-            if (oOutput != null) {
-                oOutput.close();
-            }
+        try (InputStream in = inputStream; OutputStream out = response.getOutputStream()) {
+            streamContent(in, out);
         }
+    }
+
+    /**
+     * Resolves the input stream from the action invocation.
+     * <p>
+     * This method can be overridden by subclasses to provide custom stream sources
+     * (e.g., from database, cloud storage, or generated content).
+     * </p>
+     *
+     * @param invocation the action invocation
+     * @throws IllegalArgumentException if the input stream cannot be found
+     */
+    protected void resolveInputStream(ActionInvocation invocation) {
+        String parsedInputName = conditionalParse(inputName, invocation);
+        boolean evaluated = parsedInputName != null && !parsedInputName.equals(inputName);
+        boolean reevaluate = !evaluated || isAcceptableExpression(parsedInputName);
+
+        if (inputStream == null && reevaluate) {
+            LOG.debug("Find the inputstream from the invocation variable stack");
+            inputStream = (InputStream) invocation.getStack().findValue(parsedInputName);
+        }
+
+        if (inputStream == null) {
+            String msg = ("Can not find a java.io.InputStream with the name [" + parsedInputName + "] in the invocation stack. " +
+                    "Check the <param name=\"inputName\"> tag specified for this action is correct, not excluded and accepted.");
+            LOG.error(msg);
+            throw new IllegalArgumentException(msg);
+        }
+    }
+
+    /**
+     * Applies all response headers including content-type, charset, content-length,
+     * content-disposition, and cache control headers.
+     * <p>
+     * This method can be overridden by subclasses to add custom headers
+     * (e.g., ETag, X-Custom-Header) or modify caching behavior.
+     * </p>
+     *
+     * @param response   the HTTP response
+     * @param invocation the action invocation
+     */
+    protected void applyResponseHeaders(HttpServletResponse response, ActionInvocation invocation) {
+        String parsedContentType = conditionalParse(contentType, invocation);
+        String parsedContentCharSet = conditionalParse(contentCharSet, invocation);
+
+        response.setContentType(parsedContentType);
+        if (StringUtils.isEmpty(parsedContentCharSet)) {
+            LOG.debug("Set content type to: {} and reset character encoding to null", parsedContentType);
+            response.setCharacterEncoding((String) null);
+        } else {
+            LOG.debug("Set content type: {};charset={}", parsedContentType, parsedContentCharSet);
+            response.setCharacterEncoding(parsedContentCharSet);
+        }
+
+        LOG.debug("Set the content-disposition: {}", contentDisposition);
+        if (contentDisposition != null) {
+            response.addHeader("Content-Disposition", conditionalParse(contentDisposition, invocation));
+        }
+
+        LOG.debug("Set the cache control headers if necessary: {}", allowCaching);
+        if (!allowCaching) {
+            response.addHeader("Pragma", "no-cache");
+            response.addHeader("Cache-Control", "no-cache");
+        }
+    }
+
+    /**
+     * Applies the content-length header to the response.
+     * <p>
+     * This method can be overridden by subclasses for custom length calculation
+     * or to skip setting the header for chunked transfer encoding.
+     * </p>
+     *
+     * @param response   the HTTP response
+     * @param invocation the action invocation
+     */
+    protected void applyContentLength(HttpServletResponse response, ActionInvocation invocation) {
+        if (contentLength == null) {
+            return;
+        }
+
+        LOG.debug("Set the content length: {}", contentLength);
+        String translatedContentLength = conditionalParse(contentLength, invocation);
+        try {
+            int length = Integer.parseInt(translatedContentLength);
+            if (length >= 0) {
+                response.setContentLength(length);
+            }
+        } catch (NumberFormatException e) {
+            LOG.warn("Failed to parse contentLength [{}], header will not be set", translatedContentLength, e);
+        }
+    }
+
+    /**
+     * Streams content from the input stream to the output stream.
+     * <p>
+     * This method can be overridden by subclasses to implement custom streaming behavior
+     * such as progress tracking, compression, or encryption.
+     * </p>
+     *
+     * @param input  the input stream to read from
+     * @param output the output stream to write to
+     * @throws IOException if an I/O error occurs
+     */
+    protected void streamContent(InputStream input, OutputStream output) throws IOException {
+        LOG.debug("Streaming to output buffer +++ START +++");
+        byte[] buffer = new byte[bufferSize];
+        int bytesRead;
+        while ((bytesRead = input.read(buffer)) != -1) {
+            output.write(buffer, 0, bytesRead);
+        }
+        LOG.debug("Streaming to output buffer +++ END +++");
+        output.flush();
     }
 
     /**

@@ -18,13 +18,16 @@
  */
 package org.apache.struts2.interceptor;
 
-import com.opensymphony.xwork2.ActionInvocation;
-import com.opensymphony.xwork2.interceptor.AbstractInterceptor;
+import org.apache.struts2.ActionInvocation;
+import org.apache.struts2.StrutsConstants;
+import org.apache.struts2.inject.Inject;
+import org.apache.struts2.interceptor.AbstractInterceptor;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.apache.struts2.dispatcher.Parameter;
 import org.apache.struts2.dispatcher.HttpParameters;
+import org.apache.struts2.dispatcher.Parameter;
 
+import java.io.Serial;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -38,26 +41,31 @@ import java.util.Set;
  * of 'false'.
  * </p>
  * <!-- END SNIPPET: description -->
- *
+ * <p>
  * <!-- START SNIPPET: parameters -->
  * <ul>
  * <li>setUncheckedValue - The default value of an unchecked box can be overridden by setting the 'uncheckedValue' property.</li>
  * </ul>
  * <!-- END SNIPPET: parameters -->
- *
+ * <p>
  * <!-- START SNIPPET: extending -->
- *
+ * <p>
  * <!-- END SNIPPET: extending -->
  */
 public class CheckboxInterceptor extends AbstractInterceptor {
 
-    /** Auto-generated serialization id */
+    /**
+     * Auto-generated serialization id
+     */
+    @Serial
     private static final long serialVersionUID = -586878104807229585L;
 
     private String uncheckedValue = Boolean.FALSE.toString();
+    private String hiddenPrefix = "__checkbox_";
 
     private static final Logger LOG = LogManager.getLogger(CheckboxInterceptor.class);
 
+    @Override
     public String intercept(ActionInvocation ai) throws Exception {
         HttpParameters parameters = ai.getInvocationContext().getParameters();
         Map<String, Parameter> extraParams = new HashMap<>();
@@ -65,8 +73,8 @@ public class CheckboxInterceptor extends AbstractInterceptor {
         Set<String> checkboxParameters = new HashSet<>();
         for (Map.Entry<String, Parameter> parameter : parameters.entrySet()) {
             String name = parameter.getKey();
-            if (name.startsWith("__checkbox_")) {
-                String checkboxName = name.substring("__checkbox_".length());
+            if (name.startsWith(hiddenPrefix)) {
+                String checkboxName = name.substring(hiddenPrefix.length());
 
                 Parameter value = parameter.getValue();
                 checkboxParameters.add(name);
@@ -96,5 +104,17 @@ public class CheckboxInterceptor extends AbstractInterceptor {
      */
     public void setUncheckedValue(String uncheckedValue) {
         this.uncheckedValue = uncheckedValue;
+    }
+
+    /**
+     * Sets the prefix used for hidden checkbox fields.
+     * Default is "__checkbox_" for backward compatibility.
+     *
+     * @param hiddenPrefix The prefix to use for hidden checkbox fields
+     * @since 7.2.0
+     */
+    @Inject(value = StrutsConstants.STRUTS_UI_CHECKBOX_HIDDEN_PREFIX, required = false)
+    public void setHiddenPrefix(String hiddenPrefix) {
+        this.hiddenPrefix = hiddenPrefix;
     }
 }

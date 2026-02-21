@@ -18,22 +18,23 @@
  */
 package org.apache.struts2.interceptor;
 
-import com.opensymphony.xwork2.ActionContext;
-import com.opensymphony.xwork2.XWorkTestCase;
-import com.opensymphony.xwork2.config.RuntimeConfiguration;
-import com.opensymphony.xwork2.config.entities.ActionConfig;
-import com.opensymphony.xwork2.config.entities.InterceptorMapping;
-import com.opensymphony.xwork2.config.entities.InterceptorStackConfig;
-import com.opensymphony.xwork2.config.entities.PackageConfig;
-import com.opensymphony.xwork2.config.providers.XmlConfigurationProvider;
-import com.opensymphony.xwork2.mock.MockActionInvocation;
-import org.apache.logging.log4j.util.Strings;
+import org.apache.struts2.ActionContext;
+import org.apache.struts2.XWorkTestCase;
+import org.apache.struts2.config.DefaultPropertiesProvider;
+import org.apache.struts2.config.RuntimeConfiguration;
+import org.apache.struts2.config.StrutsBeanSelectionProvider;
+import org.apache.struts2.config.entities.ActionConfig;
+import org.apache.struts2.config.entities.InterceptorMapping;
+import org.apache.struts2.config.entities.InterceptorStackConfig;
+import org.apache.struts2.config.entities.PackageConfig;
+import org.apache.struts2.config.providers.XmlConfigurationProvider;
+import org.apache.struts2.mock.MockActionInvocation;
 import org.apache.struts2.ServletActionContext;
 import org.apache.struts2.config.StrutsXmlConfigurationProvider;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 
-import javax.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpServletResponse;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Iterator;
@@ -159,7 +160,7 @@ public class FetchMetadataInterceptorTest extends XWorkTestCase {
         // Ensure we're using the specific test configuration, not the default simple configuration.
         XmlConfigurationProvider configurationProvider = new StrutsXmlConfigurationProvider("struts-testing.xml");
         container.inject(configurationProvider);
-        loadConfigurationProviders(configurationProvider);
+        loadConfigurationProviders(configurationProvider, new DefaultPropertiesProvider(), new StrutsBeanSelectionProvider());
 
         // The test configuration in "struts-testing.xml" should define a "default" package.  That "default" package should contain a "defaultInterceptorStack" containing
         // a "fetchMetadata" interceptor parameter "fetchMetadata.setExemptedPaths".  If the parameter method injection is working correctly for the FetchMetadataInterceptor,
@@ -261,12 +262,4 @@ public class FetchMetadataInterceptorTest extends XWorkTestCase {
         assertNotEquals("Expected interceptor to accept this request [" + "/" + fetchMetadataExemptedGlobalActionConfig.getName() + "]", SC_FORBIDDEN, configuredFetchMetadataInterceptor.intercept(mai));
     }
 
-    public void testDisabled() throws Exception {
-        interceptor.setDisabled("true");
-
-        interceptor.intercept(mai);
-
-        String header = response.getHeader(VARY_HEADER);
-        assertTrue("Fetch Metadata is not disabled", Strings.isEmpty(header));
-    }
 }

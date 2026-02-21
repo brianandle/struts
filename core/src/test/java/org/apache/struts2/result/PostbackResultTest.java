@@ -18,14 +18,14 @@
  */
 package org.apache.struts2.result;
 
-import com.opensymphony.xwork2.ActionContext;
-import com.opensymphony.xwork2.ActionInvocation;
-import com.opensymphony.xwork2.ActionProxy;
-import com.opensymphony.xwork2.Result;
-import com.opensymphony.xwork2.util.ValueStack;
+import org.apache.struts2.ActionContext;
+import org.apache.struts2.ActionInvocation;
+import org.apache.struts2.ActionProxy;
 import org.apache.struts2.ServletActionContext;
 import org.apache.struts2.StrutsInternalTestCase;
 import org.apache.struts2.dispatcher.mapper.ActionMapper;
+import org.apache.struts2.dispatcher.mapper.DefaultActionMapper;
+import org.apache.struts2.util.ValueStack;
 import org.easymock.IMocksControl;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
@@ -117,7 +117,9 @@ public class PostbackResultTest extends StrutsInternalTestCase {
         expect(mockInvocation.getStack()).andReturn(stack).anyTimes();
 
         control.replay();
-        result.setActionMapper(container.getInstance(ActionMapper.class));
+        DefaultActionMapper mapper = (DefaultActionMapper) container.getInstance(ActionMapper.class);
+        mapper.setAllowDynamicMethodCalls("true");
+        result.setActionMapper(mapper);
         result.execute(mockInvocation);
         assertEquals("<!DOCTYPE html><html><body><form action=\"/myNamespace${1-1}/myAction${1-1}!myMethod${1-1}.action\" method=\"POST\">" +
                 "<script>setTimeout(function(){document.forms[0].submit();},0);</script></html>", res.getContentAsString());

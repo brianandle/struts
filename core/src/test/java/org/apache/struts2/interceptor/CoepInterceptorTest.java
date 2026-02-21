@@ -18,8 +18,8 @@
  */
 package org.apache.struts2.interceptor;
 
-import com.opensymphony.xwork2.ActionContext;
-import com.opensymphony.xwork2.mock.MockActionInvocation;
+import org.apache.struts2.ActionContext;
+import org.apache.struts2.mock.MockActionInvocation;
 import org.apache.logging.log4j.util.Strings;
 import org.apache.struts2.ServletActionContext;
 import org.apache.struts2.StrutsInternalTestCase;
@@ -40,15 +40,6 @@ public class CoepInterceptorTest extends StrutsInternalTestCase {
     private final String COEP_REPORT_HEADER = "Cross-Origin-Embedder-Policy-Report-Only";
     private final String HEADER_CONTENT = "require-corp";
 
-
-    public void testDisabled() throws Exception {
-        interceptor.setDisabled("true");
-
-        interceptor.intercept(mai);
-
-        String header = response.getHeader(COEP_ENFORCING_HEADER);
-        assertTrue("COEP is not disabled", Strings.isEmpty(header));
-    }
 
     public void testEnforcingHeader() throws Exception {
         interceptor.setEnforcingMode("true");
